@@ -1,0 +1,27 @@
+services:
+  backend_v2v:
+    container_name: backend_v2v_container
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres_db:5432/dbname
+    build:
+      context: ./backendv2v 
+      dockerfile: Dockerfile
+    volumes:
+      - ./backendv2v:/app
+  
+    depends_on:
+      - postgres_db
+
+  postgres_db:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: dbname
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+  
