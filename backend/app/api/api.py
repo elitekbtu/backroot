@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Request, Depends, HTTPException, status
-from v1.endpoints.users import router as users_router
-from v1.endpoints.auth import router as auth_router
-from v1.endpoints.stt import router as stt_router
-from v1.endpoints.tts import router as tts_router
+from app.api.v1.endpoints.users import router as users_router
+from app.api.v1.endpoints.auth import router as auth_router
+from app.api.v1.endpoints.stt import router as stt_router
+from app.api.v1.endpoints.tts import router as tts_router
 
 
 router = APIRouter()

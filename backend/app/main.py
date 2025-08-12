@@ -6,10 +6,10 @@ import asyncio
 import logging
 
 
-from core.config import get_settings
-from core.database import Base, engine
+from app.core.config import get_settings
+from app.core.database import Base, engine
 
-from api import api_router
+from app.api import api_router
 
 settings = get_settings()
 
