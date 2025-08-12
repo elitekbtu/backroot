@@ -9,7 +9,7 @@ import logging
 from core.config import get_settings
 from core.database import Base, engine
 
-from api.v1.api import api_router
+from api import api_router
 
 settings = get_settings()
 
