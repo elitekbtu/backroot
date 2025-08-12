@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.db.models.user import User
+from app.database.models import User
 
 settings = get_settings()
 
