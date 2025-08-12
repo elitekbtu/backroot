@@ -6,3 +6,7 @@ alembic
 pydantic
 httpx
 python-dotenv
+python-multipart
+bcrypt
+pydantic[email]
+pydantic-settings

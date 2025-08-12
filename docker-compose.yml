@@ -1,27 +1,31 @@
 services:
-  backend_v2v:
-    container_name: backend_v2v_container
+  backend:
+    build: ./backend
+    restart: unless-stopped
     ports:
       - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://user:password@postgres_db:5432/dbname
-    build:
-      context: ./backendv2v 
-      dockerfile: Dockerfile
     volumes:
-      - ./backendv2v:/app
-  
+      - ./backend:/app
+    env_file:
+      - .env
     depends_on:
       - postgres_db
+      - migrate
 
   postgres_db:
     image: postgres:latest
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: dbname
+    env_file:
+      - .env
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
-  
+      - postgres_data:/var/lib/postgresql/data
+  migrate:
+    build: ./backend
+    command: alembic upgrade head
+    env_file:
+      - .env
+    depends_on:
+      - postgres_db
+  volumes:
+    postgres_data:
