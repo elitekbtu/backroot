@@ -20,6 +20,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
   migrate:
     build: ./backend
     command: alembic upgrade head
@@ -27,5 +28,6 @@ services:
       - .env
     depends_on:
       - postgres_db
-  volumes:
-    postgres_data:
+
+volumes:
+  postgres_data:
