@@ -4,7 +4,7 @@ from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Backend V2V"
+    PROJECT_NAME: str = "Backend"
     BACKEND_CORS_ORIGINS: list[str] = ['localhost']
     DATABASE_URL: str = Field(env="DATABASE_URL")
 
