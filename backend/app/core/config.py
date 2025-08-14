@@ -5,9 +5,8 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Backend"
-    BACKEND_CORS_ORIGINS: list[str] = ['localhost']
+    BACKEND_CORS_ORIGINS: list[str] = ['localhost', 'http://localhost:8081', "http://localhost:19000", "http://localhost:19001", "*"]
     DATABASE_URL: str = Field(env="DATABASE_URL")
-
     SECRET_KEY: str = Field("", env="SECRET_KEY")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(60, env="ACCESS_TOKEN_EXPIRE_MINUTES")
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(14, env="REFRESH_TOKEN_EXPIRE_DAYS")
