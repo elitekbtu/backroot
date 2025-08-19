@@ -21,5 +21,4 @@ class User(Base):
 
     stts = relationship("Stt", back_populates="user", cascade="all, delete-orphan")
     ttss = relationship("Tts", back_populates="user", cascade="all, delete-orphan")
-
-    
+    coins = relationship("Coin", back_populates="user", cascade="all, delete-orphan")
