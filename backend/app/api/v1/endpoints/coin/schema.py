@@ -7,11 +7,23 @@ class CoinBase(BaseModel):
     map_id: int
     latitude: float
     longitude: float
+    name: str
+    description: str
+    icon: str
+    rarity: str
+    points: int
 
 class CoinCreate(CoinBase):
     pass
 
 class CoinUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    icon: Optional[str] = None
+    rarity: Optional[str] = None
+    points: Optional[int] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     is_collected: Optional[bool] = None
     collected_by_id: Optional[int] = None
     collected_at: Optional[datetime] = None

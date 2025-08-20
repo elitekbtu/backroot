@@ -56,10 +56,10 @@ export default function TabLayout() {
               <Tabs.Screen
           name="discover"
           options={{
-            title: 'Поиск',
+            title: 'Discover',
             tabBarIcon: ({ color, focused }) => (
               <TabIcon 
-                name="search" 
+                name="trophy" 
                 color={color} 
                 focused={focused}
               />
@@ -113,6 +113,7 @@ const getIconName = (name: string, focused: boolean): keyof typeof Ionicons.glyp
   const iconMap: Record<string, keyof typeof Ionicons.glyphMap> = {
     'home': focused ? 'home' : 'home-outline',
     'search': focused ? 'search' : 'search-outline',
+    'trophy': focused ? 'trophy' : 'trophy-outline',
     'plus': 'add-circle',
     'bell': focused ? 'notifications' : 'notifications-outline',
     'user': focused ? 'person' : 'person-outline',

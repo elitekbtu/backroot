@@ -13,6 +13,11 @@ class Coin(Base):
     map_id = Column(Integer, ForeignKey("maps.id"), nullable=False)  # Связь с картой
     latitude = Column(Float, nullable=False)  # Широта
     longitude = Column(Float, nullable=False)  # Долгота
+    name = Column(String, nullable=False)  # Название достижения
+    description = Column(String, nullable=False)  # Описание достижения
+    icon = Column(String, nullable=False)  # Иконка достижения
+    rarity = Column(String, nullable=False)  # Редкость достижения
+    points = Column(Integer, nullable=False)  # Очки за достижение
     is_collected = Column(Boolean, default=False)  # Статус сбора
     collected_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Связь с пользователем
     collected_at = Column(DateTime, nullable=True)  # Время сбора

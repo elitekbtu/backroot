@@ -32,6 +32,41 @@ export interface RefreshTokenRequest {
   refresh_token: string;
 }
 
+// Coin Types
+export interface Coin {
+  id: number;
+  map_id: number;
+  latitude: number;
+  longitude: number;
+  is_collected: boolean;
+  collected_by_id?: number;
+  collected_at?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface CoinWithDistance extends Coin {
+  distance_meters?: number;
+  map_name?: string;
+  map_description?: string;
+}
+
+export interface CoinList {
+  items: Coin[];
+  total: number;
+  page: number;
+  size: number;
+  pages: number;
+}
+
+export interface CoinListWithDistance {
+  items: CoinWithDistance[];
+  total: number;
+  page: number;
+  size: number;
+  pages: number;
+}
+
 class ApiService {
   private baseURL: string;
   private accessToken: string | null = null;
@@ -50,9 +85,9 @@ class ApiService {
   ): Promise<ApiResponse<T>> {
     try {
       const url = `${this.baseURL}${endpoint}`;
-      const headers: HeadersInit = {
+      const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        ...options.headers,
+        ...(options.headers as Record<string, string> || {}),
       };
 
       // Add authorization header if access token exists
@@ -118,6 +153,21 @@ class ApiService {
 
   async logout(): Promise<ApiResponse<void>> {
     return this.makeRequest<void>(API_CONFIG.ENDPOINTS.AUTH.LOGOUT, {
+      method: 'POST',
+    });
+  }
+
+  // Coin Methods
+  async getCoins(page: number = 1, size: number = 10): Promise<ApiResponse<CoinList>> {
+    return this.makeRequest<CoinList>(`${API_CONFIG.ENDPOINTS.COINS.GET_ALL}?page=${page}&size=${size}`);
+  }
+
+  async discoverCoins(lat: number, lon: number, page: number = 1, size: number = 10): Promise<ApiResponse<CoinListWithDistance>> {
+    return this.makeRequest<CoinListWithDistance>(`${API_CONFIG.ENDPOINTS.COINS.DISCOVER}?lat=${lat}&lon=${lon}&page=${page}&size=${size}`);
+  }
+
+  async collectCoin(coinId: number, lat: number, lon: number): Promise<ApiResponse<Coin>> {
+    return this.makeRequest<Coin>(`${API_CONFIG.ENDPOINTS.COINS.COLLECT.replace('{id}', coinId.toString())}?lat=${lat}&lon=${lon}`, {
       method: 'POST',
     });
   }

@@ -1,6 +1,15 @@
 // API Configuration
+const getBaseUrl = () => {
+  // For web, use localhost
+  if (typeof window !== 'undefined') {
+    return 'http://localhost:8000';
+  }
+  // For mobile, use the computer's IP
+  return 'http://172.20.10.2:8000';
+};
+
 export const API_CONFIG = {
-  BASE_URL: 'http://68.183.219.243:8000',
+  BASE_URL: getBaseUrl(),
   ENDPOINTS: {
     AUTH: {
       LOGIN: '/api/auth/login',
@@ -11,6 +20,11 @@ export const API_CONFIG = {
     },
     USERS: {
       ME: '/api/users/me',
+    },
+    COINS: {
+      GET_ALL: '/api/coins',
+      DISCOVER: '/api/coins/discover',
+      COLLECT: '/api/coins/{id}/collect',
     },
   },
 };
