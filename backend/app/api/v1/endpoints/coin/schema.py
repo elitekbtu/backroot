@@ -27,8 +27,20 @@ class CoinResponse(CoinBase):
     class Config:
         from_attributes = True
 
+class CoinWithDistance(CoinResponse):
+    distance_meters: Optional[float] = None
+    map_name: Optional[str] = None
+    map_description: Optional[str] = None
+
 class CoinList(BaseModel):
     items: List[CoinResponse]
+    total: int
+    page: int
+    size: int
+    pages: int
+
+class CoinListWithDistance(BaseModel):
+    items: List[CoinWithDistance]
     total: int
     page: int
     size: int

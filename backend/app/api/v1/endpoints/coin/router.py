@@ -4,7 +4,7 @@ from typing import Optional
 
 from app.core import get_db, get_current_user
 from app.database.models import User
-from .schema import CoinCreate, CoinUpdate, CoinResponse, CoinList
+from .schema import CoinCreate, CoinUpdate, CoinResponse, CoinList, CoinListWithDistance
 from .service import CoinService
 
 router = APIRouter(prefix="/coins", tags=["Coins"])
@@ -31,6 +31,33 @@ async def get_coins(
     Get coin achievements for current user with pagination
     """
     return CoinService.get_coins(db, current_user, page, size)
+
+@router.get("/discover", response_model=CoinListWithDistance)
+async def discover_coins(
+    lat: float = Query(..., description="User latitude"),
+    lon: float = Query(..., description="User longitude"),
+    page: int = Query(1, ge=1, description="Page number"),
+    size: int = Query(10, ge=1, le=100, description="Page size"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Discover all coins with distance from user location
+    """
+    return CoinService.get_coins_with_distance(db, current_user, lat, lon, page, size)
+
+@router.post("/{coin_id}/collect", response_model=CoinResponse)
+async def collect_coin(
+    coin_id: int,
+    lat: float = Query(..., description="User latitude"),
+    lon: float = Query(..., description="User longitude"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Collect a coin if user is within 50 meters
+    """
+    return CoinService.collect_coin(db, coin_id, current_user, lat, lon)
 
 @router.get("/search", response_model=CoinList)
 async def search_coins(
