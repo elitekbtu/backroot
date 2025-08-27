@@ -1,11 +1,7 @@
-// API Configuration
+// API Configuration  
 const getBaseUrl = () => {
-  // For web, use localhost
-  if (typeof window !== 'undefined') {
-    return 'http://localhost:8000';
-  }
-  // For mobile, use the computer's IP
-  return 'http://172.20.10.2:8000';
+  // Backend is running on localhost:8000
+  return 'http://localhost:8000';
 };
 
 export const API_CONFIG = {

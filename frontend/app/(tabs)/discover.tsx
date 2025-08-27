@@ -8,21 +8,27 @@ import {
   ScrollView,
   RefreshControl,
   Alert,
-
+  TouchableOpacity,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocation } from '@/hooks/useLocation';
 import { apiService, CoinWithDistance } from '@/services/api';
 import { CoinCard } from '@/components/CoinCard';
+import { useAuth } from '@/contexts/AuthContext';
+import ARGameScreen from '@/components/ar/ARGameScreen';
 
 
 export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
   const { location, errorMsg, loading: locationLoading } = useLocation();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
   const [coins, setCoins] = useState<CoinWithDistance[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedCoin, setSelectedCoin] = useState<CoinWithDistance | null>(null);
+  const [showARGame, setShowARGame] = useState(false);
 
   
   const fadeAnimation = useRef(new Animated.Value(0)).current;
@@ -45,16 +51,33 @@ export default function DiscoverScreen() {
   }, []);
 
   const loadCoins = async () => {
-    if (!location) return;
+    if (!location) {
+      console.log('❌ LoadCoins: No location available');
+      return;
+    }
+    
+    if (!isAuthenticated) {
+      console.log('❌ LoadCoins: User not authenticated');
+      Alert.alert('Authentication Required', 'Please log in to discover achievements');
+      return;
+    }
+    
+    console.log('📍 LoadCoins: Location available', { lat: location.latitude, lon: location.longitude });
+    console.log('👤 LoadCoins: User authenticated', { userId: user?.id, email: user?.email });
     
     try {
       setLoading(true);
+      console.log('🔄 LoadCoins: Calling API...');
+      
       const response = await apiService.discoverCoins(
         location.latitude,
         location.longitude
       );
       
+      console.log('📨 LoadCoins: API Response', response);
+      
       if (response.success && response.data) {
+        console.log('✅ LoadCoins: Success, got coins:', response.data.items.length);
         // Sort by distance (closest first)
         const sortedCoins = response.data.items.sort((a, b) => {
           const distanceA = a.distance_meters || Infinity;
@@ -62,10 +85,13 @@ export default function DiscoverScreen() {
           return distanceA - distanceB;
         });
         setCoins(sortedCoins);
+        console.log('🎯 LoadCoins: Coins sorted by distance');
       } else {
+        console.log('❌ LoadCoins: API Error', response.error);
         Alert.alert('Error', response.error || 'Failed to load achievements');
       }
     } catch (error) {
+      console.log('💥 LoadCoins: Exception caught', error);
       Alert.alert('Error', 'Failed to load achievements');
     } finally {
       setLoading(false);
@@ -79,10 +105,18 @@ export default function DiscoverScreen() {
   };
 
   useEffect(() => {
-    if (location) {
-      loadCoins();
+    // For development: Allow testing without authentication
+    if (!authLoading) {
+      if (location && isAuthenticated) {
+        // Load real data from API if authenticated
+        loadCoins();
+      } else {
+        // Show mock data for unauthenticated users (development only)
+        setCoins(mockCoins);
+        setLoading(false);
+      }
     }
-  }, [location]);
+  }, [location, isAuthenticated, authLoading]);
 
   const handleCollectCoin = (coin: CoinWithDistance) => {
     if (!location) {
@@ -95,15 +129,133 @@ export default function DiscoverScreen() {
       return;
     }
     
-    // Просто показываем уведомление о сборе
-    Alert.alert('Success', `${coin.name} collected! 🎉`);
+    // Запускаем AR игру
+    setSelectedCoin(coin);
+    setShowARGame(true);
+  };
+
+  const handleARGameSuccess = async () => {
+    if (!selectedCoin) return;
+    
+    try {
+      if (isAuthenticated && location) {
+        // Call API to collect coin if authenticated
+        const response = await apiService.collectCoin(
+          selectedCoin.id,
+          location.latitude,
+          location.longitude
+        );
+        
+        if (response.success) {
+          // Update local state
+          setCoins(prev => 
+            prev.map(coin => 
+              coin.id === selectedCoin.id 
+                ? { ...coin, is_collected: true }
+                : coin
+            )
+          );
+          
+          Alert.alert('Success! 🎉', `${selectedCoin.name} collected!\n+${selectedCoin.points} points`);
+        } else {
+          Alert.alert('Error', response.error || 'Failed to collect achievement');
+        }
+      } else {
+        // For development: just update local state without API call
+        setCoins(prev => 
+          prev.map(coin => 
+            coin.id === selectedCoin.id 
+              ? { ...coin, is_collected: true }
+              : coin
+          )
+        );
+        
+        Alert.alert('Success! 🎉', `${selectedCoin.name} collected!\n+${selectedCoin.points} points\n(Demo mode - not saved to server)`);
+      }
+      
+    } catch (error) {
+      Alert.alert('Error', 'Failed to collect achievement');
+    } finally {
+      setShowARGame(false);
+      setSelectedCoin(null);
+    }
+  };
+
+  const handleARGameClose = () => {
+    setShowARGame(false);
+    setSelectedCoin(null);
   };
 
   const canCollectCoin = (coin: CoinWithDistance) => {
     return !coin.is_collected && coin.distance_meters && coin.distance_meters <= 50;
   };
 
-  if (locationLoading) {
+  // Mock data for development/testing without authentication
+  const mockCoins: CoinWithDistance[] = [
+    {
+      id: 1,
+      name: "Expo 2017",
+      icon: "🏛️",
+      points: 100,
+      distance_meters: 25, // Very close for testing
+      map_name: "Astana City",
+      map_description: "Capital city of Kazakhstan",
+      is_collected: false,
+      collected_by_id: null,
+      collected_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: null,
+      map_id: 1,
+      latitude: 51.09076,
+      longitude: 71.41784,
+      description: "Visit the iconic Expo 2017 site",
+      rarity: "rare"
+    },
+    {
+      id: 2,
+      name: "ADD Table Tennis Center",
+      icon: "🏓",
+      points: 50,
+      distance_meters: 80, // Too far for collection
+      map_name: "Astana City", 
+      map_description: "Capital city of Kazakhstan",
+      is_collected: false,
+      collected_by_id: null,
+      collected_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: null,
+      map_id: 1,
+      latitude: 51.10441,
+      longitude: 71.40153,
+      description: "Table tennis center in Astana",
+      rarity: "common"
+    },
+    {
+      id: 3,
+      name: "Baiterek Tower",
+      icon: "🗼",
+      points: 75,
+      distance_meters: 15, // Very close for testing
+      map_name: "Astana City",
+      map_description: "Capital city of Kazakhstan", 
+      is_collected: false,
+      collected_by_id: null,
+      collected_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: null,
+      map_id: 1,
+      latitude: 51.1283,
+      longitude: 71.4306,
+      description: "Famous tower in Astana",
+      rarity: "uncommon"
+    }
+  ];
+
+
+
+
+
+  if (locationLoading || authLoading) {
     return (
       <View style={styles.container}>
         <View style={styles.centerContent}>
@@ -140,7 +292,10 @@ export default function DiscoverScreen() {
         <Ionicons name="trophy" size={32} color="#FFD700" />
         <Text style={styles.title}>Discover Achievements</Text>
         <Text style={styles.subtitle}>
-          Find and collect achievements around you
+          {isAuthenticated ? 
+            'Find and collect achievements around you' : 
+            'Demo mode - Login for real achievements'
+          }
         </Text>
       </Animated.View>
 
@@ -180,7 +335,26 @@ export default function DiscoverScreen() {
         )}
       </ScrollView>
 
-
+      {/* AR Game Modal */}
+      <Modal
+        visible={showARGame}
+        animationType="slide"
+        presentationStyle="fullScreen"
+      >
+        {selectedCoin && (
+          <ARGameScreen
+            achievement={{
+              id: selectedCoin.id,
+              name: selectedCoin.name || `Achievement #${selectedCoin.id}`,
+              icon: selectedCoin.icon || '🏆',
+              points: selectedCoin.points || 50,
+              distance_meters: selectedCoin.distance_meters,
+            }}
+            onCollect={handleARGameSuccess}
+            onClose={handleARGameClose}
+          />
+        )}
+      </Modal>
     </View>
   );
 }
@@ -255,5 +429,17 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  loginButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 25,
+    marginTop: 20,
+  },
+  loginButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 }); 

@@ -38,7 +38,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize authentication state
   useEffect(() => {
-    initializeAuth();
+    // Initialize with real authentication, but don't block app if it fails
+    initializeAuth().catch(() => {
+      // If auth fails, just set loading to false to allow app to continue
+      setState(prev => ({ ...prev, loading: false }));
+    });
   }, []);
 
   const initializeAuth = async () => {

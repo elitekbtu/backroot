@@ -26,6 +26,8 @@ export interface UserInfo {
   first_name?: string;
   last_name?: string;
   is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface RefreshTokenRequest {
@@ -49,6 +51,11 @@ export interface CoinWithDistance extends Coin {
   distance_meters?: number;
   map_name?: string;
   map_description?: string;
+  name?: string;
+  icon?: string;
+  points?: number;
+  description?: string;
+  rarity?: string;
 }
 
 export interface CoinList {
