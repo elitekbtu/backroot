@@ -65,6 +65,12 @@ async def get_current_user(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user
 
+async def get_current_user_from_token(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),) -> User:
+    """Alternative function for getting current user from token."""
+    return await get_current_user(token, db)
+
 def create_refresh_token(data: dict, expires_delta: timedelta | None = None):
     """Return a signed JWT refresh token."""
     to_encode = data.copy()

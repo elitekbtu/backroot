@@ -10,6 +10,11 @@ class Settings(BaseSettings):
     SECRET_KEY: str = Field("", env="SECRET_KEY")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(60, env="ACCESS_TOKEN_EXPIRE_MINUTES")
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(14, env="REFRESH_TOKEN_EXPIRE_DAYS")
+    
+    OPENAI_API_KEY: str = Field("", env="OPENAI_API_KEY")
+    OPENAI_MODEL: str = Field("gpt-4o", env="OPENAI_MODEL")
+    OPENAI_TTS_MODEL: str = Field("tts-1", env="OPENAI_TTS_MODEL")
+    OPENAI_STT_MODEL: str = Field("whisper-1", env="OPENAI_STT_MODEL")
 
     class Config:
         env_file = ".env"

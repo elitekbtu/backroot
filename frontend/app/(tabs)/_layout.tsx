@@ -72,7 +72,7 @@ export default function TabLayout() {
             title: 'Создать',
             tabBarIcon: ({ color, focused }) => (
               <TabIcon 
-                name="plus" 
+                name="mic" 
                 color={color} 
                 focused={focused}
               />
@@ -113,7 +113,7 @@ const getIconName = (name: string, focused: boolean): keyof typeof Ionicons.glyp
   const iconMap: Record<string, keyof typeof Ionicons.glyphMap> = {
     'home': focused ? 'home' : 'home-outline',
     'search': focused ? 'search' : 'search-outline',
-    'plus': 'add-circle',
+    'mic': 'mic',
     'bell': focused ? 'notifications' : 'notifications-outline',
     'user': focused ? 'person' : 'person-outline',
   };

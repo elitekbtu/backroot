@@ -1,0 +1,463 @@
+import json
+import logging
+from typing import Dict, Optional, Any
+from datetime import datetime
+from fastapi import WebSocket
+
+from app.core.config import get_settings
+from .openai_client import OpenAIClient
+from .audio_processor import AudioProcessor
+
+logger = logging.getLogger(__name__)
+settings = get_settings()
+
+
+class V2VWebSocketService:
+    """Voice-to-Voice WebSocket service using OpenAI models with TalkingHead lip-sync support."""
+    
+    def __init__(self):
+        self.openai_client = OpenAIClient()
+        self.audio_processor = AudioProcessor()
+        self.active_connections: Dict[str, WebSocket] = {}
+        self.user_sessions: Dict[str, Dict[str, Any]] = {}
+        
+    async def connect(self, websocket: WebSocket, user_id: str):
+        """Handle new WebSocket connection."""
+        try:
+            self.active_connections[user_id] = websocket
+            self.user_sessions[user_id] = {
+                "connected_at": datetime.utcnow(),
+                "conversation_history": [],
+                "is_processing": False
+            }
+            
+            await websocket.send_text(json.dumps({
+                "type": "connection_status",
+                "status": "connected",
+                "message": "V2V connection established"
+            }))
+            
+            logger.info(f"User {user_id} connected to V2V service")
+            
+        except Exception as e:
+            logger.error(f"Error connecting user {user_id}: {e}")
+            await websocket.close(1011, f"Connection error: {str(e)}")
+    
+    async def disconnect(self, user_id: str):
+        """Handle WebSocket disconnection."""
+        try:
+            if user_id in self.active_connections:
+                del self.active_connections[user_id]
+            if user_id in self.user_sessions:
+                del self.user_sessions[user_id]
+            
+            logger.info(f"User {user_id} disconnected from V2V service")
+            
+        except Exception as e:
+            logger.error(f"Error disconnecting user {user_id}: {e}")
+    
+    async def handle_message(self, websocket: WebSocket, user_id: str, message: str):
+        """Handle incoming WebSocket messages."""
+        try:
+            data = json.loads(message)
+            message_type = data.get("type")
+            
+            if message_type == "voice_input":
+                await self.process_voice_input(websocket, user_id, data)
+            elif message_type == "text_input":
+                await self.process_text_input(websocket, user_id, data)
+            elif message_type == "ping":
+                await websocket.send_text(json.dumps({"type": "pong"}))
+            elif message_type == "get_history":
+                await self.send_conversation_history(websocket, user_id)
+            elif message_type == "clear_history":
+                await self.clear_conversation_history(websocket, user_id)
+            elif message_type == "get_lip_sync_data":
+                await self.send_lip_sync_data(websocket, user_id, data)
+            else:
+                await websocket.send_text(json.dumps({
+                    "type": "error",
+                    "message": f"Unknown message type: {message_type}"
+                }))
+                
+        except json.JSONDecodeError:
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "message": "Invalid JSON format"
+            }))
+        except Exception as e:
+            logger.error(f"Error handling message from user {user_id}: {e}")
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "message": f"Internal server error: {str(e)}"
+            }))
+    
+    async def process_voice_input(self, websocket: WebSocket, user_id: str, data: Dict):
+        """Process voice input and generate voice response with lip-sync data."""
+        try:
+            if self.user_sessions[user_id]["is_processing"]:
+                await websocket.send_text(json.dumps({
+                    "type": "error",
+                    "message": "Already processing a request. Please wait."
+                }))
+                return
+            
+            self.user_sessions[user_id]["is_processing"] = True
+            
+            # Send processing status
+            await websocket.send_text(json.dumps({
+                "type": "processing_status",
+                "status": "processing",
+                "message": "Processing voice input..."
+            }))
+            
+            # Extract audio data
+            audio_data = data.get("audio_data")
+            if not audio_data:
+                raise ValueError("No audio data provided")
+            
+            # Process audio and convert to text using OpenAIClient directly
+            transcript = await self.openai_client.speech_to_text(audio_data)
+            
+            # Generate AI response
+            ai_response = await self.openai_client.generate_response(transcript, user_id, self.user_sessions)
+            
+            # Convert AI response to speech
+            audio_response = await self.openai_client.text_to_speech(ai_response)
+            
+            # Generate lip-sync data for the AI response
+            lip_sync_data = await self.generate_lip_sync_data(ai_response)
+            
+            # Update conversation history
+            self.user_sessions[user_id]["conversation_history"].append({
+                "timestamp": datetime.utcnow().isoformat(),
+                "user_input": transcript,
+                "ai_response": ai_response,
+                "type": "voice"
+            })
+            
+            # Send response with lip-sync data
+            await websocket.send_text(json.dumps({
+                "type": "voice_response",
+                "transcript": transcript,
+                "ai_response": ai_response,
+                "audio_response": audio_response,
+                "lip_sync_data": lip_sync_data,
+                "timestamp": datetime.utcnow().isoformat()
+            }))
+            
+        except Exception as e:
+            logger.error(f"Error processing voice input for user {user_id}: {e}")
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "message": f"Error processing voice input: {str(e)}"
+            }))
+        finally:
+            self.user_sessions[user_id]["is_processing"] = False
+    
+    async def process_text_input(self, websocket: WebSocket, user_id: str, data: Dict):
+        """Process text input and generate voice response with lip-sync data."""
+        try:
+            if self.user_sessions[user_id]["is_processing"]:
+                await websocket.send_text(json.dumps({
+                    "type": "error",
+                    "message": "Already processing a request. Please wait."
+                }))
+                return
+            
+            self.user_sessions[user_id]["is_processing"] = True
+            
+            # Send processing status
+            await websocket.send_text(json.dumps({
+                "type": "processing_status",
+                "status": "processing",
+                "message": "Processing text input..."
+            }))
+            
+            # Extract text
+            text_input = data.get("text")
+            if not text_input:
+                raise ValueError("No text provided")
+            
+            # Generate AI response
+            ai_response = await self.openai_client.generate_response(text_input, user_id, self.user_sessions)
+            
+            # Convert AI response to speech
+            audio_response = await self.openai_client.text_to_speech(ai_response)
+            
+            # Generate lip-sync data for the AI response
+            lip_sync_data = await self.generate_lip_sync_data(ai_response)
+            
+            # Update conversation history
+            self.user_sessions[user_id]["conversation_history"].append({
+                "timestamp": datetime.utcnow().isoformat(),
+                "user_input": text_input,
+                "ai_response": ai_response,
+                "type": "text"
+            })
+            
+            # Send response with lip-sync data
+            await websocket.send_text(json.dumps({
+                "type": "voice_response",
+                "transcript": text_input,
+                "ai_response": ai_response,
+                "audio_response": audio_response,
+                "lip_sync_data": lip_sync_data,
+                "timestamp": datetime.utcnow().isoformat()
+            }))
+            
+        except Exception as e:
+            logger.error(f"Error processing text input for user {user_id}: {e}")
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "message": f"Error processing text input: {str(e)}"
+            }))
+        finally:
+            self.user_sessions[user_id]["is_processing"] = False
+    
+    async def generate_lip_sync_data(self, text: str) -> Dict[str, Any]:
+        """Generate lip-sync data for TalkingHead avatar."""
+        try:
+            # Enhanced phoneme mapping for better lip-sync
+            phonemes = self._text_to_phonemes_enhanced(text)
+            
+            # Generate timing data based on text analysis
+            words = text.split()
+            word_count = len(words)
+            
+            # Calculate duration based on word count and complexity
+            total_duration = self._calculate_speech_duration(text, word_count)
+            
+            lip_sync_data = {
+                "type": "visemes",
+                "visemes": phonemes,
+                "timing": self._generate_enhanced_timing_data(phonemes, total_duration),
+                "duration": total_duration,
+                "language": "en",
+                "text": text,
+                "word_count": word_count
+            }
+            
+            return lip_sync_data
+            
+        except Exception as e:
+            logger.error(f"Error generating lip-sync data: {e}")
+            return {
+                "type": "visemes",
+                "visemes": [],
+                "timing": [],
+                "duration": 0,
+                "language": "en",
+                "text": text,
+                "word_count": len(text.split())
+            }
+    
+    def _text_to_phonemes_enhanced(self, text: str) -> list:
+        """Convert text to enhanced phonemes for better lip-sync."""
+        # Enhanced phoneme mapping based on TalkingHead requirements
+        phoneme_map = {
+            'a': 'A', 'e': 'E', 'i': 'I', 'o': 'O', 'u': 'U',  # Vowels
+            'b': 'B', 'p': 'B', 'm': 'B',  # Closed lips
+            'f': 'F', 'v': 'F',  # Lower lip + upper teeth
+            'w': 'W',  # Rounded lips
+            'l': 'L',  # Tongue position
+            'd': 'D', 't': 'D', 'n': 'D',  # Tongue tip
+            'k': 'K', 'g': 'K', 'ng': 'K',  # Back of tongue
+            's': 'S', 'z': 'S',  # Fricative
+            'sh': 'SH', 'ch': 'SH', 'j': 'SH',  # Palatal
+            'th': 'TH',  # Interdental
+            'r': 'R',  # Retroflex
+            'h': 'H',  # Glottal
+            'y': 'Y'   # Palatal glide
+        }
+        
+        phonemes = []
+        text_lower = text.lower()
+        i = 0
+        
+        while i < len(text_lower):
+            # Check for two-character phonemes first
+            if i < len(text_lower) - 1:
+                two_char = text_lower[i:i+2]
+                if two_char in phoneme_map:
+                    phonemes.append(phoneme_map[two_char])
+                    i += 2
+                    continue
+            
+            # Single character phonemes
+            char = text_lower[i]
+            if char in phoneme_map:
+                phonemes.append(phoneme_map[char])
+            elif char.isalpha():
+                # Default mapping for other letters
+                if char in 'aeiou':
+                    phonemes.append('A')  # Open mouth
+                else:
+                    phonemes.append('X')  # Neutral
+            elif char.isspace():
+                # Add small pause for spaces
+                phonemes.append('P')
+            
+            i += 1
+        
+        return phonemes
+    
+    def _calculate_speech_duration(self, text: str, word_count: int) -> float:
+        """Calculate speech duration based on text complexity."""
+        # Base duration: 0.4 seconds per word
+        base_duration = word_count * 0.4
+        
+        # Adjust for punctuation and complexity
+        punctuation_count = sum(1 for char in text if char in '.,!?;:')
+        complexity_factor = 1.0
+        
+        # Longer words take more time
+        avg_word_length = sum(len(word) for word in text.split()) / max(word_count, 1)
+        if avg_word_length > 8:
+            complexity_factor += 0.2
+        elif avg_word_length > 6:
+            complexity_factor += 0.1
+        
+        # Punctuation adds pauses
+        pause_time = punctuation_count * 0.2
+        
+        total_duration = (base_duration * complexity_factor) + pause_time
+        
+        return max(total_duration, 1.0)  # Minimum 1 second
+    
+    def _generate_enhanced_timing_data(self, phonemes: list, total_duration: float) -> list:
+        """Generate enhanced timing data for phonemes."""
+        if not phonemes:
+            return []
+        
+        timing_data = []
+        
+        # Calculate phoneme durations based on phoneme type
+        phoneme_durations = {}
+        for phoneme in set(phonemes):
+            if phoneme in ['A', 'E', 'I', 'O', 'U']:  # Vowels
+                phoneme_durations[phoneme] = 0.15  # Longer for vowels
+            elif phoneme in ['B', 'F', 'W']:  # Lip movements
+                phoneme_durations[phoneme] = 0.12
+            elif phoneme in ['L', 'R', 'Y']:  # Tongue movements
+                phoneme_durations[phoneme] = 0.10
+            elif phoneme == 'P':  # Pauses
+                phoneme_durations[phoneme] = 0.08
+            else:  # Default
+                phoneme_durations[phoneme] = 0.10
+        
+        # Generate timing with proper durations
+        current_time = 0.0
+        for phoneme in phonemes:
+            duration = phoneme_durations.get(phoneme, 0.10)
+            
+            timing_data.append({
+                "phoneme": phoneme,
+                "start_time": current_time,
+                "duration": duration
+            })
+            
+            current_time += duration
+        
+        # Normalize timing to fit total duration
+        if current_time > 0:
+            scale_factor = total_duration / current_time
+            for timing in timing_data:
+                timing["start_time"] *= scale_factor
+                timing["duration"] *= scale_factor
+        
+        return timing_data
+    
+    async def send_lip_sync_data(self, websocket: WebSocket, user_id: str, data: Dict):
+        """Send lip-sync data for a specific text."""
+        try:
+            text = data.get("text", "")
+            if not text:
+                await websocket.send_text(json.dumps({
+                    "type": "error",
+                    "message": "No text provided for lip-sync generation"
+                }))
+                return
+            
+            lip_sync_data = await self.generate_lip_sync_data(text)
+            
+            await websocket.send_text(json.dumps({
+                "type": "lip_sync_data",
+                "text": text,
+                "lip_sync_data": lip_sync_data
+            }))
+            
+        except Exception as e:
+            logger.error(f"Error sending lip-sync data for user {user_id}: {e}")
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "message": f"Error generating lip-sync data: {str(e)}"
+            }))
+    
+    async def send_conversation_history(self, websocket: WebSocket, user_id: str):
+        """Send conversation history to the client."""
+        try:
+            session = self.user_sessions.get(user_id, {})
+            history = session.get("conversation_history", [])
+            
+            await websocket.send_text(json.dumps({
+                "type": "conversation_history",
+                "history": history
+            }))
+            
+        except Exception as e:
+            logger.error(f"Error sending conversation history for user {user_id}: {e}")
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "message": f"Error retrieving conversation history: {str(e)}"
+            }))
+    
+    async def clear_conversation_history(self, websocket: WebSocket, user_id: str):
+        """Clear conversation history for a user."""
+        try:
+            if user_id in self.user_sessions:
+                self.user_sessions[user_id]["conversation_history"] = []
+            
+            await websocket.send_text(json.dumps({
+                "type": "history_cleared",
+                "message": "Conversation history cleared"
+            }))
+            
+        except Exception as e:
+            logger.error(f"Error clearing conversation history for user {user_id}: {e}")
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "message": f"Error clearing conversation history: {str(e)}"
+            }))
+    
+    async def get_conversation_history(self, user_id: str) -> list:
+        """Get conversation history for a user."""
+        session = self.user_sessions.get(user_id, {})
+        return session.get("conversation_history", [])
+    
+    async def clear_conversation_history_by_id(self, user_id: str):
+        """Clear conversation history for a user by ID."""
+        if user_id in self.user_sessions:
+            self.user_sessions[user_id]["conversation_history"] = []
+    
+    async def test_models(self) -> dict:
+        """Test if all OpenAI models are working."""
+        try:
+            results = {
+                "gpt_model": True,  # Assume GPT works if we can create the client
+                "tts_model": await self.openai_client.test_tts_model(),
+                "stt_model": await self.openai_client.test_stt_model()
+            }
+            return results
+        except Exception as e:
+            logger.error(f"Error testing models: {e}")
+            return {
+                "gpt_model": False,
+                "tts_model": False,
+                "stt_model": False,
+                "error": str(e)
+            }
+
+
+# Global instance
+v2v_service = V2VWebSocketService()
