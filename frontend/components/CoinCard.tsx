@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CoinWithDistance } from '@/services/api';
 
@@ -7,9 +7,36 @@ interface CoinCardProps {
   coin: CoinWithDistance;
   onCollect?: () => void;
   canCollect?: boolean;
+  isUpdating?: boolean;
 }
 
-export const CoinCard: React.FC<CoinCardProps> = ({ coin, onCollect, canCollect = false }) => {
+export const CoinCard: React.FC<CoinCardProps> = ({ 
+  coin, 
+  onCollect, 
+  canCollect = false,
+  isUpdating = false 
+}) => {
+  const distanceAnimation = useRef(new Animated.Value(1)).current;
+  const pulseAnimation = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (isUpdating) {
+      // Pulse animation when updating
+      Animated.sequence([
+        Animated.timing(pulseAnimation, {
+          toValue: 1.05,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnimation, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [isUpdating]);
+
   const getDistanceColor = (distance?: number) => {
     if (!distance) return '#666';
     if (distance <= 50) return '#4CAF50'; // Green - can collect
@@ -25,8 +52,22 @@ export const CoinCard: React.FC<CoinCardProps> = ({ coin, onCollect, canCollect 
     return `${(distance / 1000).toFixed(1)}km`;
   };
 
+  const getDistanceIcon = (distance?: number) => {
+    if (!distance) return 'location-outline';
+    if (distance <= 50) return 'location'; // Green - can collect
+    if (distance <= 200) return 'location-outline'; // Orange - close
+    return 'location-outline'; // Red - far
+  };
+
   return (
-    <View style={styles.container}>
+    <Animated.View 
+      style={[
+        styles.container,
+        {
+          transform: [{ scale: pulseAnimation }]
+        }
+      ]}
+    >
       <View style={styles.header}>
         <View style={styles.iconContainer}>
           <Ionicons 
@@ -37,21 +78,42 @@ export const CoinCard: React.FC<CoinCardProps> = ({ coin, onCollect, canCollect 
         </View>
         <View style={styles.info}>
           <Text style={styles.title}>
-            {coin.map_name || `Achievement #${coin.id}`}
+            {coin.name || `Achievement #${coin.id}`}
           </Text>
-          {coin.map_description && (
+          {coin.description && (
             <Text style={styles.description} numberOfLines={2}>
-              {coin.map_description}
+              {coin.description}
             </Text>
           )}
+          <View style={styles.pointsContainer}>
+            <Ionicons name="star" size={14} color="#FFD700" />
+            <Text style={styles.pointsText}>{coin.points} points</Text>
+          </View>
         </View>
         <View style={styles.status}>
           {coin.is_collected ? (
             <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
           ) : (
-            <Text style={[styles.distance, { color: getDistanceColor(coin.distance_meters) }]}>
-              {getDistanceText(coin.distance_meters)}
-            </Text>
+            <View style={styles.distanceContainer}>
+              <Ionicons 
+                name={getDistanceIcon(coin.distance_meters)} 
+                size={16} 
+                color={getDistanceColor(coin.distance_meters)} 
+              />
+              <Animated.Text 
+                style={[
+                  styles.distance, 
+                  { color: getDistanceColor(coin.distance_meters) }
+                ]}
+              >
+                {getDistanceText(coin.distance_meters)}
+              </Animated.Text>
+              {isUpdating && (
+                <View style={styles.updatingIndicator}>
+                  <Ionicons name="refresh" size={12} color="#007AFF" />
+                </View>
+              )}
+            </View>
           )}
         </View>
       </View>
@@ -62,7 +124,7 @@ export const CoinCard: React.FC<CoinCardProps> = ({ coin, onCollect, canCollect 
           <Text style={styles.collectButtonText}>Launch AR</Text>
         </TouchableOpacity>
       )}
-    </View>
+    </Animated.View>
   );
 };
 
@@ -102,13 +164,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
+    marginBottom: 8,
+  },
+  pointsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pointsText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
+    fontWeight: '500',
   },
   status: {
     alignItems: 'flex-end',
   },
+  distanceContainer: {
+    alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   distance: {
     fontSize: 16,
     fontWeight: '600',
+    marginLeft: 4,
+  },
+  updatingIndicator: {
+    marginLeft: 8,
   },
   collectButton: {
     backgroundColor: '#2196F3',

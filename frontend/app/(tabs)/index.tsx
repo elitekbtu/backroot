@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 
 export default function HomeScreen() {
   const { user } = useAuth();
@@ -136,6 +137,20 @@ export default function HomeScreen() {
                   Справочная информация
                 </Text>
               </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.featureCard}
+                onPress={() => router.push('/ar-test')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.featureIcon}>
+                  <Ionicons name="camera" size={32} color="#FF3B30" />
+                </View>
+                <Text style={styles.featureTitle}>AR Опыт</Text>
+                <Text style={styles.featureDescription}>
+                  Дополненная реальность
+                </Text>
+              </TouchableOpacity>
             </View>
           </Animated.View>
 
@@ -168,6 +183,15 @@ export default function HomeScreen() {
               >
                 <Ionicons name="refresh" size={20} color="#FF9500" />
                 <Text style={styles.quickActionText}>Обновить</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.quickActionButton}
+                onPress={() => router.push('/ar-test')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="camera" size={20} color="#AF52DE" />
+                <Text style={styles.quickActionText}>AR Тест</Text>
               </TouchableOpacity>
             </View>
           </Animated.View>

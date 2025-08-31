@@ -8,7 +8,6 @@ import {
   ScrollView,
   RefreshControl,
   Alert,
-  TouchableOpacity,
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,18 +18,17 @@ import { CoinCard } from '@/components/CoinCard';
 import { useAuth } from '@/contexts/AuthContext';
 import ARGameScreen from '@/components/ar/ARGameScreen';
 
-
 export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
-  const { location, errorMsg, loading: locationLoading } = useLocation();
+  const { location, errorMsg, loading: locationLoading, refreshLocation } = useLocation();                                                                                                                                             
   const { isAuthenticated, loading: authLoading, user } = useAuth();
   const [coins, setCoins] = useState<CoinWithDistance[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCoin, setSelectedCoin] = useState<CoinWithDistance | null>(null);
   const [showARGame, setShowARGame] = useState(false);
+  const [isUpdatingDistances, setIsUpdatingDistances] = useState(false);
 
-  
   const fadeAnimation = useRef(new Animated.Value(0)).current;
   const slideUpAnimation = useRef(new Animated.Value(30)).current;
 
@@ -63,7 +61,7 @@ export default function DiscoverScreen() {
     }
     
     console.log('📍 LoadCoins: Location available', { lat: location.latitude, lon: location.longitude });
-    console.log('👤 LoadCoins: User authenticated', { userId: user?.id, email: user?.email });
+    console.log('👤 LoadCoins: User authenticated', { userId: user?.id });
     
     try {
       setLoading(true);
@@ -98,6 +96,49 @@ export default function DiscoverScreen() {
     }
   };
 
+  const updateDistances = async () => {
+    if (!location || !isAuthenticated) return;
+    
+    try {
+      setIsUpdatingDistances(true);
+      console.log('🔄 UpdateDistances: Updating distances...');
+      
+      const response = await apiService.discoverCoins(
+        location.latitude,
+        location.longitude
+      );
+      
+      if (response.success && response.data?.items) {
+        // Update existing coins with new distances
+        setCoins(prevCoins => {
+          const updatedCoins = prevCoins.map(prevCoin => {
+            const newCoin = response.data!.items.find((item: CoinWithDistance) => item.id === prevCoin.id);
+            if (newCoin) {
+              return {
+                ...prevCoin,
+                distance_meters: newCoin.distance_meters,
+              };
+            }
+            return prevCoin;
+          });
+          
+          // Sort by new distances
+          return updatedCoins.sort((a, b) => {
+            const distanceA = a.distance_meters || Infinity;
+            const distanceB = b.distance_meters || Infinity;
+            return distanceA - distanceB;
+          });
+        });
+        
+        console.log('✅ UpdateDistances: Distances updated');
+      }
+    } catch (error) {
+      console.log('💥 UpdateDistances: Error updating distances', error);
+    } finally {
+      setIsUpdatingDistances(false);
+    }
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadCoins();
@@ -117,6 +158,14 @@ export default function DiscoverScreen() {
       }
     }
   }, [location, isAuthenticated, authLoading]);
+
+  // Update distances when location changes (but don't reload all coins)
+  useEffect(() => {
+    if (location && isAuthenticated && coins.length > 0) {
+      // Only update distances, don't reload everything
+      updateDistances();
+    }
+  }, [location?.latitude, location?.longitude]);
 
   const handleCollectCoin = (coin: CoinWithDistance) => {
     if (!location) {
@@ -251,10 +300,6 @@ export default function DiscoverScreen() {
     }
   ];
 
-
-
-
-
   if (locationLoading || authLoading) {
     return (
       <View style={styles.container}>
@@ -330,6 +375,7 @@ export default function DiscoverScreen() {
               coin={coin}
               onCollect={() => handleCollectCoin(coin)}
               canCollect={canCollectCoin(coin)}
+              isUpdating={isUpdatingDistances}
             />
           ))
         )}

@@ -12,7 +12,8 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs access to location to find AR achievements near you.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to location to find AR achievements near you."
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to location to find AR achievements near you.",
+        "NSCameraUsageDescription": "This app needs access to camera for AR functionality."
       }
     },
     "android": {
@@ -23,7 +24,8 @@
       "edgeToEdgeEnabled": true,
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA"
       ]
     },
     "web": {
@@ -33,6 +35,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-camera",
       [
         "expo-splash-screen",
         {
