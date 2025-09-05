@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { RegisterFormData, RegisterRequest } from '../../types/auth';
-import { register } from '../../api/auth';
+import { useAuth } from '../../context/AuthContext';
 
 const Register: React.FC = () => {
+  const navigate = useNavigate();
+  const { register, loading } = useAuth();
   const [formData, setFormData] = useState<RegisterFormData>({
     username: '',
     password: '',
@@ -10,10 +13,11 @@ const Register: React.FC = () => {
     firstName: '',
     lastName: ''
   });
+  const [error, setError] = useState<string>('');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev: RegisterFormData) => ({
       ...prev,
       [name]: value
     }));
@@ -21,9 +25,10 @@ const Register: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     
     if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match');
+      setError('Passwords do not match');
       return;
     }
     
@@ -35,17 +40,15 @@ const Register: React.FC = () => {
     };
 
     try {
-      const response = await register(registerData);
-      if (response.success) {
-        console.log('Registration successful!');
-        // TODO: Redirect to main app or update auth context
+      const success = await register(registerData);
+      if (success) {
+        navigate('/');
       } else {
-        console.error('Registration failed:', response.error?.detail);
-        // TODO: Show error message to user
+        setError('Registration failed. Please try again.');
       }
     } catch (error) {
       console.error('Registration error:', error);
-      // TODO: Show error message to user
+      setError('Registration failed. Please try again.');
     }
   };
 
@@ -58,6 +61,11 @@ const Register: React.FC = () => {
           </h2>
         </div>
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+              {error}
+            </div>
+          )}
           <div className="space-y-4">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</label>
@@ -68,8 +76,6 @@ const Register: React.FC = () => {
                 value={formData.username}
                 onChange={handleInputChange}
                 required
-                minLength={3}
-                maxLength={50}
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 placeholder="Enter username"
               />
@@ -82,7 +88,6 @@ const Register: React.FC = () => {
                 name="firstName"
                 value={formData.firstName}
                 onChange={handleInputChange}
-                maxLength={50}
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 placeholder="Enter first name"
               />
@@ -95,7 +100,6 @@ const Register: React.FC = () => {
                 name="lastName"
                 value={formData.lastName}
                 onChange={handleInputChange}
-                maxLength={50}
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 placeholder="Enter last name"
               />
@@ -109,8 +113,6 @@ const Register: React.FC = () => {
                 value={formData.password}
                 onChange={handleInputChange}
                 required
-                minLength={6}
-                maxLength={100}
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 placeholder="Enter password"
               />
@@ -124,8 +126,6 @@ const Register: React.FC = () => {
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
                 required
-                minLength={6}
-                maxLength={100}
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 placeholder="Confirm password"
               />
@@ -135,9 +135,10 @@ const Register: React.FC = () => {
           <div>
             <button 
               type="submit" 
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              disabled={loading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Create Account
+              {loading ? 'Creating Account...' : 'Create Account'}
             </button>
           </div>
         </form>

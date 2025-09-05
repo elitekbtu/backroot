@@ -26,32 +26,16 @@ const MainFooter: React.FC = () => {
             <ul className="space-y-2">
               <li>
                 <Link 
-                  to="/home" 
-                  className={`hover:text-white ${isActive('/home')}`}
+                  to="/dashboard" 
+                  className={`hover:text-white ${isActive('/dashboard')}`}
                 >
-                  Home
+                  Dashboard
                 </Link>
               </li>
               <li>
                 <Link 
-                  to="/v2v" 
-                  className={`hover:text-white ${isActive('/v2v')}`}
-                >
-                  V2V
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/ar" 
-                  className={`hover:text-white ${isActive('/ar')}`}
-                >
-                  AR
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/weather" 
-                  className={`hover:text-white ${isActive('/weather')}`}
+                  to="/dashboard/weather" 
+                  className={`hover:text-white ${isActive('/dashboard/weather')}`}
                 >
                   Weather
                 </Link>
@@ -59,26 +43,18 @@ const MainFooter: React.FC = () => {
             </ul>
           </div>
           
-          {/* Settings & Account */}
+          {/* Support */}
           <div>
-            <h4 className="text-lg font-semibold mb-4">Account</h4>
+            <h4 className="text-lg font-semibold mb-4">Support</h4>
             <ul className="space-y-2">
               <li>
-                <Link 
-                  to="/settings" 
-                  className={`hover:text-white ${isActive('/settings')}`}
-                >
-                  Settings
-                </Link>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-white">
-                  Profile
+                <a href="mailto:support@backroot.com" className="text-gray-300 hover:text-white">
+                  Contact Support
                 </a>
               </li>
               <li>
-                <a href="#" className="text-gray-300 hover:text-white">
-                  Help
+                <a href="mailto:info@backroot.com" className="text-gray-300 hover:text-white">
+                  General Inquiries
                 </a>
               </li>
             </ul>

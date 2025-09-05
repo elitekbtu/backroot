@@ -28,7 +28,7 @@ app.add_middleware(
 
 logger = logging.getLogger(__name__)
 
-app.include_router(api_router, prefix="/api")
+app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/api/health")
 async def health_check():

@@ -1,8 +1,10 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const MainNavbar: React.FC = () => {
   const location = useLocation();
+  const { user, logout } = useAuth();
 
   const isActive = (path: string) => {
     return location.pathname === path ? 'text-blue-600' : 'text-gray-600';
@@ -14,7 +16,7 @@ const MainNavbar: React.FC = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <Link to="/home" className="text-2xl font-bold text-gray-800">
+            <Link to="/dashboard" className="text-2xl font-bold text-gray-800">
               BackRoot
             </Link>
           </div>
@@ -23,46 +25,44 @@ const MainNavbar: React.FC = () => {
           <div className="hidden md:block">
             <div className="ml-10 flex items-baseline space-x-4">
               <Link 
-                to="/home" 
-                className={`hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium ${isActive('/home')}`}
+                to="/dashboard" 
+                className={`hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium ${isActive('/dashboard')}`}
               >
-                Home
+                Dashboard
               </Link>
               <Link 
-                to="/v2v" 
-                className={`hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium ${isActive('/v2v')}`}
-              >
-                V2V
-              </Link>
-              <Link 
-                to="/ar" 
-                className={`hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium ${isActive('/ar')}`}
-              >
-                AR
-              </Link>
-              <Link 
-                to="/weather" 
-                className={`hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium ${isActive('/weather')}`}
+                to="/dashboard/weather" 
+                className={`hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium ${isActive('/dashboard/weather')}`}
               >
                 Weather
+              </Link>
+              <Link 
+                to="/dashboard/profile" 
+                className={`hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium ${isActive('/dashboard/profile')}`}
+              >
+                Profile
               </Link>
             </div>
           </div>
           
-          {/* Settings Button */}
+          {/* User Info & Actions */}
           <div className="flex items-center space-x-4">
+            {/* User greeting */}
+            {user && (
+              <span className="text-gray-600 text-sm">
+                Welcome, {user.first_name || user.username}!
+              </span>
+            )}
+            
             <Link 
-              to="/settings" 
-              className={`hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium ${isActive('/settings')}`}
+              to="/dashboard/settings" 
+              className={`hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium ${isActive('/dashboard/settings')}`}
             >
               Settings
             </Link>
             <button 
               className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-              onClick={() => {
-                // Add logout logic here
-                console.log('Logout clicked');
-              }}
+              onClick={logout}
             >
               Logout
             </button>

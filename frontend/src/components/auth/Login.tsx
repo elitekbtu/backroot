@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { LoginFormData, LoginRequest } from '../../types/auth';
-import { login } from '../../api/auth';
+import { useAuth } from '../../context/AuthContext';
 
 const Login: React.FC = () => {
+  const navigate = useNavigate();
+  const { login, loading } = useAuth();
   const [formData, setFormData] = useState<LoginFormData>({
     username: '',
     password: ''
   });
+  const [error, setError] = useState<string>('');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev: LoginFormData) => ({
       ...prev,
       [name]: value
     }));
@@ -18,6 +22,7 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     
     const loginData: LoginRequest = {
       username: formData.username,
@@ -25,17 +30,15 @@ const Login: React.FC = () => {
     };
 
     try {
-      const response = await login(loginData);
-      if (response.success) {
-        console.log('Login successful!');
-        // TODO: Redirect to main app or update auth context
+      const success = await login(loginData);
+      if (success) {
+        navigate('/');
       } else {
-        console.error('Login failed:', response.error?.detail);
-        // TODO: Show error message to user
+        setError('Invalid username or password');
       }
     } catch (error) {
       console.error('Login error:', error);
-      // TODO: Show error message to user
+      setError('Login failed. Please try again.');
     }
   };
 
@@ -48,6 +51,11 @@ const Login: React.FC = () => {
           </h2>
         </div>
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+              {error}
+            </div>
+          )}
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="username" className="sr-only">Username</label>
@@ -58,8 +66,6 @@ const Login: React.FC = () => {
                 value={formData.username}
                 onChange={handleInputChange}
                 required
-                minLength={3}
-                maxLength={50}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Username"
               />
@@ -73,8 +79,6 @@ const Login: React.FC = () => {
                 value={formData.password}
                 onChange={handleInputChange}
                 required
-                minLength={6}
-                maxLength={100}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Password"
               />
@@ -84,9 +88,10 @@ const Login: React.FC = () => {
           <div>
             <button 
               type="submit" 
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              disabled={loading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Sign in
+              {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
         </form>

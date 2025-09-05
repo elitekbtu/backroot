@@ -1,74 +1,74 @@
-import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import GuestLayout from './layout/GuestLayout';
 import MainLayout from './layout/MainLayout';
 import Hero from './pages/Hero';
+import Home from './pages/Home';
+import Weather from './pages/Weather';
+import Profile from './pages/Profile';
+import Settings from './pages/Settings';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
-import Weather from './pages/Weather';
-import Home from './pages/Home';
-import V2V from './pages/V2V';
-import AR from './pages/AR';
-import Settings from './pages/Settings';
+
 import './App.css';
 
-function App() {
-  const [isAuthenticated] = useState(false);
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+  
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
+};
 
+const GuestRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+  
+  return !isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" />;
+};
+
+const AppRoutes = () => {
+  return (
+    <Routes>
+      <Route path="/" element={<GuestRoute><GuestLayout /></GuestRoute>}>
+        <Route index element={<Hero />} />
+        <Route path="login" element={<Login />} />
+        <Route path="register" element={<Register />} />
+      </Route>
+      
+      <Route path="/dashboard" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+        <Route index element={<Home />} />
+        <Route path="weather" element={<Weather />} />
+        <Route path="profile" element={<Profile />} />
+        <Route path="settings" element={<Settings />} />
+      </Route>
+
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
+  );
+};
+
+const App = () => {
   return (
     <Router>
-      <div className="App">
-        <Routes>
-          {/* Guest Routes - for unauthenticated users */}
-          <Route path="/" element={
-            <GuestLayout>
-              <Hero />
-            </GuestLayout>
-          } />
-          <Route path="/login" element={
-            <GuestLayout>
-              <Login />
-            </GuestLayout>
-          } />
-          <Route path="/register" element={
-            <GuestLayout>
-              <Register />
-            </GuestLayout>
-          } />
-          
-          {/* Main Routes - for authenticated users */}
-          <Route path="/home" element={
-            <MainLayout>
-              <Home />
-            </MainLayout>
-          } />
-          <Route path="/v2v" element={
-            <MainLayout>
-              <V2V />
-            </MainLayout>
-          } />
-          <Route path="/ar" element={
-            <MainLayout>
-              <AR />
-            </MainLayout>
-          } />
-          <Route path="/settings" element={
-            <MainLayout>
-              <Settings />
-            </MainLayout>
-          } />
-          <Route path="/weather" element={
-            <MainLayout>
-              <Weather />
-            </MainLayout>
-          } />
-          
-          {/* Redirect to home for authenticated users, hero for guests */}
-          <Route path="*" element={<Navigate to={isAuthenticated ? "/home" : "/"} replace />} />
-        </Routes>
-      </div>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
     </Router>
   );
-}
+};
 
 export default App
