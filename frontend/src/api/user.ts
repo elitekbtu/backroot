@@ -7,12 +7,10 @@ import type {
 } from '../types/user';
 
 class UserService {
-  // Get current user profile
   async getCurrentUser(): Promise<User> {
     return apiClient.get<User>('/users/me');
   }
 
-  // Get user by ID
   async getUserById(id: number): Promise<User> {
     return apiClient.get<User>(`/users/${id}`);
   }

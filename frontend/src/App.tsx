@@ -7,6 +7,7 @@ import Home from './pages/Home';
 import Weather from './pages/Weather';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
+import AR from './pages/AR';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 
@@ -52,6 +53,7 @@ const AppRoutes = () => {
       <Route path="/dashboard" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
         <Route index element={<Home />} />
         <Route path="weather" element={<Weather />} />
+        <Route path="ar" element={<AR />} />
         <Route path="profile" element={<Profile />} />
         <Route path="settings" element={<Settings />} />
       </Route>

@@ -36,7 +36,7 @@ class CoinService:
         db.commit()
         db.refresh(new_coin)
         
-        return CoinResponse.from_orm(new_coin)
+        return CoinResponse.model_validate(new_coin)
     
     @staticmethod
     def get_coin(db: Session, coin_id: int) -> CoinResponse:
@@ -52,7 +52,7 @@ class CoinService:
                 detail="Coin not found"
             )
         
-        return CoinResponse.from_orm(coin)
+        return CoinResponse.model_validate(coin)
     
     @staticmethod
     def get_coins(
@@ -84,7 +84,7 @@ class CoinService:
         pages = math.ceil(total / size) if total > 0 else 1
         
         return CoinList(
-            coins=[CoinResponse.from_orm(coin) for coin in coins],
+            coins=[CoinResponse.model_validate(coin) for coin in coins],
             total=total,
             page=page,
             size=size,
@@ -124,7 +124,7 @@ class CoinService:
         db.commit()
         db.refresh(coin)
         
-        return CoinResponse.from_orm(coin)
+        return CoinResponse.model_validate(coin)
     
     @staticmethod
     def delete_coin(db: Session, coin_id: int) -> bool:
@@ -161,7 +161,7 @@ class CoinService:
                 detail="Coin not found"
             )
         
-        return CoinResponse.from_orm(coin)
+        return CoinResponse.model_validate(coin)
     
     @staticmethod
     def get_active_coins_for_ar(db: Session) -> List[CoinResponse]:
@@ -172,4 +172,4 @@ class CoinService:
             Coin.ar_model_url.isnot(None)
         ).all()
         
-        return [CoinResponse.from_orm(coin) for coin in coins]
+        return [CoinResponse.model_validate(coin) for coin in coins]

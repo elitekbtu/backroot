@@ -37,6 +37,12 @@ const MainNavbar: React.FC = () => {
                 Weather
               </Link>
               <Link 
+                to="/dashboard/ar" 
+                className={`hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium ${isActive('/dashboard/ar')}`}
+              >
+                AR Coins
+              </Link>
+              <Link 
                 to="/dashboard/profile" 
                 className={`hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium ${isActive('/dashboard/profile')}`}
               >
