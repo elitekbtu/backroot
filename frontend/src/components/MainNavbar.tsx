@@ -43,6 +43,12 @@ const MainNavbar: React.FC = () => {
                 AR Coins
               </Link>
               <Link 
+                to="/dashboard/v2v" 
+                className={`hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium ${isActive('/dashboard/v2v')}`}
+              >
+                Voice AI
+              </Link>
+              <Link 
                 to="/dashboard/profile" 
                 className={`hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium ${isActive('/dashboard/profile')}`}
               >

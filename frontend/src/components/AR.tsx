@@ -12,9 +12,12 @@ export const AR: React.FC<ARProps> = ({ className = '' }) => {
   const [error, setError] = useState<string | null>(null);
   const [selectedCoin, setSelectedCoin] = useState<CoinResponse | null>(null);
   const [isARSupported, setIsARSupported] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('environment');
+  const [isCameraActive, setIsCameraActive] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
-  // Check for AR support
+  // Check for AR support and initialize camera
   useEffect(() => {
     const checkARSupport = async () => {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -22,6 +25,8 @@ export const AR: React.FC<ARProps> = ({ className = '' }) => {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true });
           stream.getTracks().forEach(track => track.stop());
           setIsARSupported(true);
+          // Initialize camera after AR support is confirmed
+          initializeCamera();
         } catch (err) {
           console.warn('AR not supported:', err);
           setIsARSupported(false);
@@ -56,22 +61,48 @@ export const AR: React.FC<ARProps> = ({ className = '' }) => {
   // Initialize camera
   const initializeCamera = async () => {
     try {
+      // Stop existing stream if any
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
-          facingMode: 'environment',
+          facingMode: cameraFacing,
           width: { ideal: 1280 },
           height: { ideal: 720 }
         } 
       });
       
+      streamRef.current = stream;
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        setIsCameraActive(true);
+        setError(null);
       }
     } catch (err) {
       console.error('Error accessing camera:', err);
-      setError('Unable to access camera');
+      setError('Unable to access camera. Please check permissions.');
+      setIsCameraActive(false);
     }
   };
+
+  // Switch camera
+  const switchCamera = async () => {
+    const newFacing = cameraFacing === 'environment' ? 'user' : 'environment';
+    setCameraFacing(newFacing);
+    await initializeCamera();
+  };
+
+  // Cleanup camera on unmount
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   // Handle coin selection
   const handleCoinSelect = (coin: CoinResponse) => {
@@ -155,7 +186,6 @@ export const AR: React.FC<ARProps> = ({ className = '' }) => {
           playsInline
           muted
           className="w-full h-full object-cover"
-          onLoadedMetadata={initializeCamera}
         />
         
         {/* AR Overlay */}
@@ -168,12 +198,22 @@ export const AR: React.FC<ARProps> = ({ className = '' }) => {
 
       {/* Controls */}
       <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
-        <button
-          onClick={initializeCamera}
-          className="px-4 py-2 bg-black bg-opacity-50 text-white rounded-lg hover:bg-opacity-70 transition-all"
-        >
-          📷 Camera
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={initializeCamera}
+            className="px-4 py-2 bg-black bg-opacity-50 text-white rounded-lg hover:bg-opacity-70 transition-all"
+            disabled={!isARSupported}
+          >
+            {isCameraActive ? '📷 Camera On' : '📷 Start Camera'}
+          </button>
+          <button
+            onClick={switchCamera}
+            className="px-4 py-2 bg-black bg-opacity-50 text-white rounded-lg hover:bg-opacity-70 transition-all"
+            disabled={!isARSupported}
+          >
+            {cameraFacing === 'environment' ? '🔄 Front' : '🔄 Back'}
+          </button>
+        </div>
         
         <div className="text-white bg-black bg-opacity-50 px-3 py-2 rounded-lg">
           <span className="text-sm">Coins: {coins.length}</span>
@@ -225,9 +265,22 @@ export const AR: React.FC<ARProps> = ({ className = '' }) => {
       {/* Instructions */}
       <div className="absolute top-20 left-4 right-4 text-center">
         <div className="bg-black bg-opacity-50 text-white px-4 py-2 rounded-lg text-sm">
-          Tap on coins to view details • Move your device to explore
+          {isCameraActive 
+            ? 'Tap on coins to view details • Move your device to explore' 
+            : 'Click "Start Camera" to begin AR experience'
+          }
         </div>
       </div>
+
+      {/* Camera Status Indicator */}
+      {isCameraActive && (
+        <div className="absolute top-32 left-4">
+          <div className="bg-green-500 text-white px-3 py-1 rounded-full text-xs flex items-center gap-1">
+            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+            Camera Active
+          </div>
+        </div>
+      )}
     </div>
   );
 };

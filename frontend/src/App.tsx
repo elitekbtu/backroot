@@ -8,6 +8,7 @@ import Weather from './pages/Weather';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import AR from './pages/AR';
+import V2V from './pages/V2V';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 
@@ -54,6 +55,7 @@ const AppRoutes = () => {
         <Route index element={<Home />} />
         <Route path="weather" element={<Weather />} />
         <Route path="ar" element={<AR />} />
+        <Route path="v2v" element={<V2V />} />
         <Route path="profile" element={<Profile />} />
         <Route path="settings" element={<Settings />} />
       </Route>
