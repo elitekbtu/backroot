@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+</head>
+<body>
+    <h1>WebSocket Test</h1>
+    <div id="status">Not connected</div>
+    <div id="messages"></div>
+    <button onclick="connect()">Connect</button>
+    <button onclick="disconnect()">Disconnect</button>
+    <button onclick="sendTest()">Send Test Message</button>
+
+    <script>
+        let ws = null;
+        
+        function connect() {
+            const wsUrl = 'ws://localhost:8000/api/v1/realtime/ws/4/audio';
+            console.log('Connecting to:', wsUrl);
+            addMessage('Attempting to connect to: ' + wsUrl);
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = function(event) {
+                console.log('WebSocket connected');
+                document.getElementById('status').textContent = 'Connected';
+                addMessage('Connected to WebSocket');
+            };
+            
+            ws.onmessage = function(event) {
+                console.log('Message received:', event.data);
+                addMessage('Received: ' + event.data);
+            };
+            
+            ws.onclose = function(event) {
+                console.log('WebSocket closed:', event.code, event.reason, event.wasClean);
+                document.getElementById('status').textContent = 'Disconnected (' + event.code + ')';
+                addMessage('Disconnected: ' + event.code + ' - ' + event.reason + ' (clean: ' + event.wasClean + ')');
+            };
+            
+            ws.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                console.error('WebSocket readyState:', ws.readyState);
+                addMessage('Error: ' + error + ' (readyState: ' + ws.readyState + ')');
+            };
+        }
+        
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+        
+        function sendTest() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const message = {
+                    type: 'audio',
+                    audio_data: 'dGVzdA==', // base64 for 'test'
+                    format: 'wav'
+                };
+                ws.send(JSON.stringify(message));
+                addMessage('Sent test message');
+            }
+        }
+        
+        function addMessage(text) {
+            const div = document.createElement('div');
+            div.textContent = new Date().toLocaleTimeString() + ': ' + text;
+            document.getElementById('messages').appendChild(div);
+        }
+    </script>
+</body>
+</html>

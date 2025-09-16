@@ -1,9 +1,11 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, validator
 from functools import lru_cache
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    
     PROJECT_NAME: str = "Backend"
     BACKEND_CORS_ORIGINS: list[str] = ['localhost:5173', 'http://localhost:8081', "http://localhost:19000", "http://localhost:19001", "*"]
     DATABASE_URL: str = Field(env="DATABASE_URL")
@@ -15,9 +17,6 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = Field("gpt-4o", env="OPENAI_MODEL")
     OPENAI_TTS_MODEL: str = Field("tts-1", env="OPENAI_TTS_MODEL")
     OPENAI_STT_MODEL: str = Field("whisper-1", env="OPENAI_STT_MODEL")
-
-    class Config:
-        env_file = ".env"
 
 
 @lru_cache
