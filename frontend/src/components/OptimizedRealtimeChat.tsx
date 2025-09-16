@@ -16,6 +16,7 @@ interface RealtimeEvent {
   status?: string;
   error?: string;
   session_id?: string;
+  message?: string;
 }
 
 const OptimizedRealtimeChat: React.FC = () => {

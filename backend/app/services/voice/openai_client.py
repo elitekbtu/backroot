@@ -67,8 +67,11 @@ class OpenAIClient:
     async def speech_to_text(self, audio_data: str) -> str:
         """Convert speech to text using OpenAI Whisper."""
         try:
+            logger.info(f"Starting speech-to-text, audio data length: {len(audio_data)}")
+            
             # Decode base64 audio
             audio_bytes = base64.b64decode(audio_data)
+            logger.info(f"Decoded audio bytes length: {len(audio_bytes)}")
             
             # Create a proper file-like object for OpenAI
             audio_file = io.BytesIO(audio_bytes)
@@ -102,9 +105,7 @@ class OpenAIClient:
             )
             
             # Convert response to base64
-            audio_bytes = b""
-            async for chunk in response:
-                audio_bytes += chunk
+            audio_bytes = response.read()
             
             # Encode as base64 for WebSocket transmission
             audio_b64 = base64.b64encode(audio_bytes).decode('utf-8')

@@ -14,7 +14,7 @@ async def v2v_websocket_handler(websocket: WebSocket, user_id: str):
         await websocket.accept()
         
         # Basic validation - user_id should be a valid format
-        if not user_id or len(user_id) < 3:
+        if not user_id or user_id.strip() == "":
             await websocket.close(1008, "Invalid user ID")
             return
         

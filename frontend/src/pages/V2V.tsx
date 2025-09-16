@@ -2,16 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { v2vService } from '../api/v2v';
 import { useAuth } from '../context/AuthContext';
 import TalkingHead from '../components/TalkingHead';
-import AvatarLibrary from '../components/AvatarLibrary';
 import type { 
   VoiceResponseMessage, 
   WebSocketState, 
   VoiceProcessingState,
   ConversationEntry,
   VoiceServiceStatus,
-  ModelTestResults,
-  LipSyncData
-} from '../types/v2v';
+  ModelTestResults
+} from '../api/v2v';
+import type { AvatarConfig, LipSyncData } from '../types/v2v';
 
 const V2V: React.FC = () => {
   const { user } = useAuth();
@@ -24,20 +23,39 @@ const V2V: React.FC = () => {
   const [serviceStatus, setServiceStatus] = useState<VoiceServiceStatus | null>(null);
   const [modelTestResults, setModelTestResults] = useState<ModelTestResults | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Avatar-related state
+  const [avatarReady, setAvatarReady] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
   const [currentLipSyncData, setCurrentLipSyncData] = useState<LipSyncData | null>(null);
   const [avatarMood, setAvatarMood] = useState<string>('neutral');
-  const [showAvatar, setShowAvatar] = useState<boolean>(true);
-  const [showAvatarLibrary, setShowAvatarLibrary] = useState<boolean>(false);
-  const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string>('');
   
   const userId = user?.id?.toString() || 'anonymous';
+
+  // Avatar configuration
+  const avatarConfig: AvatarConfig = {
+    url: 'https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.glb?morphTargets=ARKit,Oculus+Visemes,mouthOpen,mouthSmile,eyesClosed,eyesLookUp,eyesLookDown&textureSizeLimit=1024&textureFormat=png',
+    body: 'F',
+    lipsyncLang: 'en',
+    ttsLang: 'en-US',
+    ttsVoice: 'en-US-Standard-A',
+    avatarMood: avatarMood,
+    avatarMute: false,
+    avatarIdleEyeContact: 0.3,
+    avatarIdleHeadMove: 0.5,
+    avatarSpeakingEyeContact: 0.7,
+    avatarSpeakingHeadMove: 0.3
+  };
 
   // Initialize V2V service
   useEffect(() => {
     const initializeService = async () => {
       try {
+        console.log('Initializing V2V service for user:', userId);
+
         // Set up event handlers
         v2vService.setOnConnectionChange((state) => {
+          console.log('Connection state changed:', state);
           setConnectionState(state);
           if (state === 'error') {
             setError('Ошибка подключения к сервису');
@@ -57,49 +75,90 @@ const V2V: React.FC = () => {
             type: 'voice'
           }]);
 
-          // Set lip-sync data for avatar
-          if (response.lip_sync_data) {
-            setCurrentLipSyncData(response.lip_sync_data);
+          // Set avatar mood based on response content (simple sentiment analysis)
+          const responseText = response.ai_response.toLowerCase();
+          if (responseText.includes('happy') || responseText.includes('great') || responseText.includes('wonderful')) {
+            setAvatarMood('happy');
+          } else if (responseText.includes('sad') || responseText.includes('sorry') || responseText.includes('unfortunately')) {
+            setAvatarMood('sad');
+          } else if (responseText.includes('angry') || responseText.includes('frustrated')) {
+            setAvatarMood('angry');
+          } else {
+            setAvatarMood('neutral');
           }
+          
+          // Create simple lip sync data from response text
+          // In a real implementation, this would come from the TTS service
+          const words = response.ai_response.split(' ');
+          const lipSyncData: LipSyncData = {
+            visemes: [],
+            times: [],
+            durations: [],
+            timing: []
+          };
+          
+          let currentTime = 0;
+          words.forEach((word, index) => {
+            const duration = word.length * 0.1; // Simple duration calculation
+            lipSyncData.visemes.push(index % 2 === 0 ? 'aa' : 'E'); // Alternate between vowels
+            lipSyncData.times.push(currentTime);
+            lipSyncData.durations.push(duration);
+            lipSyncData.timing!.push({
+              viseme: index % 2 === 0 ? 'aa' : 'E',
+              start_time: currentTime,
+              duration: duration
+            });
+            currentTime += duration + 0.05; // Small gap between words
+          });
+          
+          setCurrentLipSyncData(lipSyncData);
 
           // Play the audio response
           v2vService.playAudioResponse(response.audio_response);
+          
+          // Clear lip sync data after estimated speech duration
+          setTimeout(() => {
+            setCurrentLipSyncData(null);
+          }, currentTime * 1000);
         });
 
         v2vService.setOnProcessingStatus((status) => {
+          console.log('Processing status:', status);
           setProcessingState(status.status === 'processing' ? 'processing' : 'idle');
         });
 
         v2vService.setOnError((error) => {
-          setError(error.message);
           console.error('V2V Error:', error);
+          setError(error.message);
         });
 
         v2vService.setOnConversationHistory((response) => {
+          console.log('Conversation history received:', response);
           setConversationHistory(response.history);
-        });
-
-        v2vService.setOnLipSyncData((response) => {
-          if (response.lip_sync_data) {
-            setCurrentLipSyncData(response.lip_sync_data);
-          }
         });
 
         // Get service status
         const statusResponse = await v2vService.getServiceStatus();
         if (statusResponse.success && statusResponse.data) {
           setServiceStatus(statusResponse.data);
+          console.log('Service status:', statusResponse.data);
         }
 
         // Test models
         const modelsResponse = await v2vService.testModels();
         if (modelsResponse.success && modelsResponse.data) {
           setModelTestResults(modelsResponse.data);
+          console.log('Model test results:', modelsResponse.data);
         }
 
         // Connect to V2V service
-        await v2vService.connect(userId);
-        setIsInitialized(true);
+        const connected = await v2vService.connect(userId);
+        if (connected) {
+          console.log('Successfully connected to V2V service');
+          setIsInitialized(true);
+        } else {
+          throw new Error('Failed to connect to V2V service');
+        }
 
       } catch (error) {
         console.error('Failed to initialize V2V service:', error);
@@ -111,9 +170,23 @@ const V2V: React.FC = () => {
 
     // Cleanup on unmount
     return () => {
+      console.log('Cleaning up V2V service');
       v2vService.disconnect();
     };
   }, [userId]);
+
+  // Avatar handlers
+  const handleAvatarReady = () => {
+    setAvatarReady(true);
+    setAvatarError(null);
+    console.log('Avatar is ready!');
+  };
+
+  const handleAvatarError = (error: Error) => {
+    setAvatarError(error.message);
+    setAvatarReady(false);
+    console.error('Avatar error:', error);
+  };
 
   const handleStartRecording = async () => {
     try {
@@ -136,30 +209,25 @@ const V2V: React.FC = () => {
 
   const handleTextSubmit = () => {
     if (textInput.trim()) {
-      v2vService.sendTextInput(textInput.trim());
-      setTextInput('');
+      const success = v2vService.sendTextInput(textInput.trim());
+      if (success) {
+        setTextInput('');
+        setError(null);
+      } else {
+        setError('Не удалось отправить сообщение');
+      }
     }
   };
 
   const handleClearHistory = () => {
-    v2vService.clearConversationHistory();
-    setConversationHistory([]);
+    const success = v2vService.clearConversationHistory();
+    if (success) {
+      setConversationHistory([]);
+    }
   };
 
   const handleRequestHistory = () => {
     v2vService.requestConversationHistory();
-  };
-
-  const handleRequestLipSync = () => {
-    if (textInput.trim()) {
-      v2vService.requestLipSyncData(textInput.trim());
-    }
-  };
-
-  const handleLoadAvatar = (avatarUrl: string) => {
-    setCurrentAvatarUrl(avatarUrl);
-    setShowAvatarLibrary(false);
-    console.log('Loading avatar:', avatarUrl);
   };
 
   const getConnectionStatusColor = () => {
@@ -210,6 +278,9 @@ const V2V: React.FC = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Инициализация голосового сервиса...</p>
+          {error && (
+            <p className="text-red-600 mt-2">{error}</p>
+          )}
         </div>
       </div>
     );
@@ -221,84 +292,8 @@ const V2V: React.FC = () => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Voice to Voice AI</h1>
-          <p className="text-gray-600">Общайтесь с ИИ через голос в реальном времени с 3D аватаром</p>
+          <p className="text-gray-600">Общайтесь с ИИ через голос в реальном времени</p>
         </div>
-
-        {/* Avatar Section */}
-        {showAvatar && (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">3D Аватар</h2>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setShowAvatarLibrary(true)}
-                  className="px-3 py-1 bg-purple-500 text-white rounded-lg text-sm hover:bg-purple-600"
-                >
-                  📚 Библиотека
-                </button>
-                <select
-                  value={avatarMood}
-                  onChange={(e) => setAvatarMood(e.target.value)}
-                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm"
-                >
-                  <option value="neutral">😐 Нейтральный</option>
-                  <option value="happy">😊 Радостный</option>
-                  <option value="sad">😢 Грустный</option>
-                  <option value="angry">😠 Сердитый</option>
-                </select>
-                <button
-                  onClick={() => setShowAvatar(false)}
-                  className="px-3 py-1 bg-gray-500 text-white rounded-lg text-sm hover:bg-gray-600"
-                >
-                  Скрыть
-                </button>
-              </div>
-            </div>
-            
-            <TalkingHead
-              className="w-full"
-              lipSyncData={currentLipSyncData}
-              isPlaying={processingState === 'playing'}
-              mood={avatarMood}
-              avatarUrl={currentAvatarUrl}
-              onReady={() => console.log('Avatar ready')}
-              onError={(error) => setError(`Avatar error: ${error.message}`)}
-            />
-          </div>
-        )}
-
-        {/* Avatar Library Modal */}
-        {showAvatarLibrary && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-2xl font-bold">Библиотека 3D Аватаров</h2>
-                  <button
-                    onClick={() => setShowAvatarLibrary(false)}
-                    className="text-gray-500 hover:text-gray-700 text-2xl"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <AvatarLibrary onAvatarSelect={handleLoadAvatar} />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Show Avatar Button */}
-        {!showAvatar && (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6 text-center">
-            <button
-              onClick={() => setShowAvatar(true)}
-              className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center space-x-2 mx-auto"
-            >
-              <span>👤</span>
-              <span>Показать 3D Аватар</span>
-            </button>
-          </div>
-        )}
 
         {/* Service Status */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -360,6 +355,68 @@ const V2V: React.FC = () => {
           </div>
         )}
 
+        {/* Avatar Section */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">AI Avatar</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <TalkingHead
+                className="w-full"
+                onReady={handleAvatarReady}
+                onError={handleAvatarError}
+                lipSyncData={currentLipSyncData}
+                isPlaying={processingState === 'playing'}
+                avatarConfig={avatarConfig}
+                mood={avatarMood}
+                options={{
+                  cameraView: 'upper',
+                  lightAmbientIntensity: 2,
+                  lightDirectIntensity: 30,
+                  avatarIdleEyeContact: 0.3,
+                  avatarIdleHeadMove: 0.5,
+                  avatarSpeakingEyeContact: 0.7,
+                  avatarSpeakingHeadMove: 0.3
+                }}
+              />
+            </div>
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-semibold mb-2">Avatar Status</h3>
+                <div className="space-y-2">
+                  <div className={`px-3 py-1 rounded-full text-sm ${
+                    avatarReady ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {avatarReady ? '✅ Ready' : '⏳ Loading...'}
+                  </div>
+                  {avatarError && (
+                    <div className="px-3 py-1 rounded-full text-sm bg-red-100 text-red-800">
+                      ❌ {avatarError}
+                    </div>
+                  )}
+                  <div className={`px-3 py-1 rounded-full text-sm ${
+                    processingState === 'playing' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {processingState === 'playing' ? '🗣️ Speaking' : '😐 Silent'}
+                  </div>
+                  <div className="px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-800">
+                    😊 {avatarMood.charAt(0).toUpperCase() + avatarMood.slice(1)}
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-semibold mb-2">Avatar Features</h3>
+                <ul className="space-y-1 text-sm text-gray-600">
+                  <li>✅ Ready Player Me</li>
+                  <li>✅ Lip Sync</li>
+                  <li>✅ Mood Expressions</li>
+                  <li>✅ Eye Contact</li>
+                  <li>✅ Idle Animations</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Voice Controls */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Голосовое управление</h2>
@@ -367,7 +424,7 @@ const V2V: React.FC = () => {
             <div className="flex space-x-4">
               <button
                 onClick={handleStartRecording}
-                disabled={!v2vService.isConnected || isRecording || processingState === 'processing'}
+                disabled={!v2vService.isConnected || isRecording || processingState === 'processing' || processingState === 'playing'}
                 className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 transition-all"
               >
                 <span className="text-xl">{isRecording ? '🔴' : '🎤'}</span>
@@ -410,41 +467,24 @@ const V2V: React.FC = () => {
         {/* Text Input */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Текстовый ввод</h2>
-          <div className="space-y-4">
-            <div className="flex space-x-4">
-              <input
-                type="text"
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                placeholder="Введите ваше сообщение..."
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                onKeyPress={(e) => e.key === 'Enter' && handleTextSubmit()}
-                disabled={!v2vService.isConnected || processingState === 'processing'}
-              />
-              <button
-                onClick={handleTextSubmit}
-                disabled={!v2vService.isConnected || !textInput.trim() || processingState === 'processing'}
-                className="px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-              >
-                <span>📤</span>
-                <span>Отправить</span>
-              </button>
-            </div>
-            
-            {/* Lip-sync Test */}
-            <div className="flex space-x-2">
-              <button
-                onClick={handleRequestLipSync}
-                disabled={!v2vService.isConnected || !textInput.trim()}
-                className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 text-sm"
-              >
-                <span>🎭</span>
-                <span>Тест Lip-sync</span>
-              </button>
-              <span className="text-sm text-gray-600 flex items-center">
-                Тестируйте синхронизацию губ аватара с текстом
-              </span>
-            </div>
+          <div className="flex space-x-4">
+            <input
+              type="text"
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              placeholder="Введите ваше сообщение..."
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+              onKeyPress={(e) => e.key === 'Enter' && handleTextSubmit()}
+              disabled={!v2vService.isConnected || processingState === 'processing' || processingState === 'playing'}
+            />
+            <button
+              onClick={handleTextSubmit}
+              disabled={!v2vService.isConnected || !textInput.trim() || processingState === 'processing' || processingState === 'playing'}
+              className="px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            >
+              <span>📤</span>
+              <span>Отправить</span>
+            </button>
           </div>
         </div>
 
@@ -507,7 +547,7 @@ const V2V: React.FC = () => {
           <h2 className="text-xl font-semibold mb-4">Информация о сервисе</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
-              <strong>WebSocket URL:</strong> ws://localhost:8000/api/v1/voice/ws/v2v
+              <strong>WebSocket URL:</strong> ws://localhost:8000/api/v1/voice/ws/v2v/{userId}
             </div>
             <div>
               <strong>Пользователь:</strong> {user?.username || 'Анонимный'}

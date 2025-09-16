@@ -62,6 +62,8 @@ class V2VWebSocketService:
             data = json.loads(message)
             message_type = data.get("type")
             
+            logger.info(f"Received message from user {user_id}, type: {message_type}")
+            
             if message_type == "voice_input":
                 await self.process_voice_input(websocket, user_id, data)
             elif message_type == "text_input":
@@ -116,6 +118,8 @@ class V2VWebSocketService:
             if not audio_data:
                 raise ValueError("No audio data provided")
             
+            logger.info(f"Processing voice input for user {user_id}, audio data length: {len(audio_data) if audio_data else 0}")
+            
             # Process audio and convert to text using OpenAIClient directly
             transcript = await self.openai_client.speech_to_text(audio_data)
             
@@ -148,6 +152,10 @@ class V2VWebSocketService:
             
         except Exception as e:
             logger.error(f"Error processing voice input for user {user_id}: {e}")
+            logger.error(f"Exception type: {type(e)}")
+            logger.error(f"Exception args: {e.args}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             await websocket.send_text(json.dumps({
                 "type": "error",
                 "message": f"Error processing voice input: {str(e)}"
@@ -208,6 +216,10 @@ class V2VWebSocketService:
             
         except Exception as e:
             logger.error(f"Error processing text input for user {user_id}: {e}")
+            logger.error(f"Exception type: {type(e)}")
+            logger.error(f"Exception args: {e.args}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             await websocket.send_text(json.dumps({
                 "type": "error",
                 "message": f"Error processing text input: {str(e)}"

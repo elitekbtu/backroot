@@ -1,75 +1,57 @@
 import { apiClient } from './client';
-import type {
-  VoiceServiceStatus,
-  ModelTestResults,
-  AvailableModels,
-  UserSessionInfo,
-  VoiceServiceStats,
-  V2VApiResponse,
-  WebSocketMessage,
-  ConnectionStatusMessage,
-  ProcessingStatusMessage,
-  VoiceInputMessage,
-  TextInputMessage,
-  VoiceResponseMessage,
-  LipSyncDataMessage,
-  ConversationHistoryMessage,
-  HistoryClearedMessage,
-  ErrorMessage,
-  PingMessage,
-  WebSocketState,
-  V2VConfig,
-  AudioConfig,
-  VoiceProcessingState,
-  VoiceEventHandler,
-  ErrorEventHandler,
-  ConnectionEventHandler
-} from '../types/v2v';
 
-// Default configuration
-const DEFAULT_CONFIG: V2VConfig = {
-  websocketUrl: 'ws://localhost:8000/api/v1/voice/ws/v2v',
-  reconnectAttempts: 5,
-  reconnectDelay: 1000,
-  pingInterval: 30000
-};
+// Simplified types for V2V service
+export interface VoiceServiceStatus {
+  status: 'operational' | 'error';
+  openai_api_key_valid: boolean;
+  active_connections: number;
+  active_sessions: number;
+  error?: string;
+}
 
-const DEFAULT_AUDIO_CONFIG: AudioConfig = {
-  sampleRate: 16000,
-  channels: 1,
-  bitRate: 128000,
-  format: 'webm'
-};
+export interface ModelTestResults {
+  gpt_model: boolean;
+  tts_model: boolean;
+  stt_model: boolean;
+  error?: string;
+}
 
+export interface ConversationEntry {
+  timestamp: string;
+  user_input: string;
+  ai_response: string;
+  type: 'voice' | 'text';
+}
+
+export interface VoiceResponseMessage {
+  type: 'voice_response';
+  transcript: string;
+  ai_response: string;
+  audio_response: string;
+  timestamp: string;
+}
+
+export type WebSocketState = 'connecting' | 'connected' | 'disconnected' | 'error';
+export type VoiceProcessingState = 'idle' | 'recording' | 'processing' | 'playing' | 'error';
+
+// Simplified V2V Service Class
 export class V2VService {
   private websocket: WebSocket | null = null;
-  private config: V2VConfig;
-  private audioConfig: AudioConfig;
-  private reconnectAttempts = 0;
-  private pingInterval: NodeJS.Timeout | null = null;
   private mediaRecorder: MediaRecorder | null = null;
   private audioChunks: Blob[] = [];
-  private audioContext: AudioContext | null = null;
-  private gainNode: GainNode | null = null;
-  private sourceNode: AudioBufferSourceNode | null = null;
-
-  // Event handlers
-  private onConnectionChange: ConnectionEventHandler | null = null;
-  private onVoiceResponse: VoiceEventHandler | null = null;
-  private onProcessingStatus: VoiceEventHandler | null = null;
-  private onError: ErrorEventHandler | null = null;
-  private onConversationHistory: VoiceEventHandler | null = null;
-  private onLipSyncData: VoiceEventHandler | null = null;
+  private currentAudio: HTMLAudioElement | null = null;
 
   // State
   private _connectionState: WebSocketState = 'disconnected';
   private _processingState: VoiceProcessingState = 'idle';
   private _isRecording = false;
 
-  constructor(config: Partial<V2VConfig> = {}, audioConfig: Partial<AudioConfig> = {}) {
-    this.config = { ...DEFAULT_CONFIG, ...config };
-    this.audioConfig = { ...DEFAULT_AUDIO_CONFIG, ...audioConfig };
-  }
+  // Event handlers
+  private onConnectionChange: ((state: WebSocketState) => void) | null = null;
+  private onVoiceResponse: ((response: VoiceResponseMessage) => void) | null = null;
+  private onProcessingStatus: ((status: { status: string; message: string }) => void) | null = null;
+  private onError: ((error: { message: string }) => void) | null = null;
+  private onConversationHistory: ((response: { history: ConversationEntry[] }) => void) | null = null;
 
   // Getters
   get connectionState(): WebSocketState {
@@ -89,32 +71,28 @@ export class V2VService {
   }
 
   // Event handler setters
-  setOnConnectionChange(handler: ConnectionEventHandler) {
+  setOnConnectionChange(handler: (state: WebSocketState) => void) {
     this.onConnectionChange = handler;
   }
 
-  setOnVoiceResponse(handler: VoiceEventHandler) {
+  setOnVoiceResponse(handler: (response: VoiceResponseMessage) => void) {
     this.onVoiceResponse = handler;
   }
 
-  setOnProcessingStatus(handler: VoiceEventHandler) {
+  setOnProcessingStatus(handler: (status: { status: string; message: string }) => void) {
     this.onProcessingStatus = handler;
   }
 
-  setOnError(handler: ErrorEventHandler) {
+  setOnError(handler: (error: { message: string }) => void) {
     this.onError = handler;
   }
 
-  setOnConversationHistory(handler: VoiceEventHandler) {
+  setOnConversationHistory(handler: (response: { history: ConversationEntry[] }) => void) {
     this.onConversationHistory = handler;
   }
 
-  setOnLipSyncData(handler: VoiceEventHandler) {
-    this.onLipSyncData = handler;
-  }
-
   // REST API Methods
-  async getServiceStatus(): Promise<V2VApiResponse<VoiceServiceStatus>> {
+  async getServiceStatus(): Promise<{ success: boolean; data?: VoiceServiceStatus; error?: { detail: string } }> {
     try {
       const response = await apiClient.get<VoiceServiceStatus>('/voice/status');
       return { success: true, data: response };
@@ -126,10 +104,12 @@ export class V2VService {
     }
   }
 
-  async testModels(): Promise<V2VApiResponse<ModelTestResults>> {
+  async testModels(): Promise<{ success: boolean; data?: ModelTestResults; error?: { detail: string } }> {
     try {
-      const response = await apiClient.get<ModelTestResults>('/voice/test-models');
-      return { success: true, data: response };
+      const response = await apiClient.get<any>('/voice/test-models');
+      // Backend returns { models: {...} } format, extract the models
+      const modelData = response.models || response;
+      return { success: true, data: modelData };
     } catch (error) {
       return {
         success: false,
@@ -138,55 +118,7 @@ export class V2VService {
     }
   }
 
-  async getAvailableModels(): Promise<V2VApiResponse<AvailableModels>> {
-    try {
-      const response = await apiClient.get<AvailableModels>('/voice/models');
-      return { success: true, data: response };
-    } catch (error) {
-      return {
-        success: false,
-        error: { detail: error instanceof Error ? error.message : 'Failed to get available models' }
-      };
-    }
-  }
-
-  async getUserSessionInfo(userId: string): Promise<V2VApiResponse<UserSessionInfo>> {
-    try {
-      const response = await apiClient.get<UserSessionInfo>(`/voice/sessions/${userId}`);
-      return { success: true, data: response };
-    } catch (error) {
-      return {
-        success: false,
-        error: { detail: error instanceof Error ? error.message : 'Failed to get session info' }
-      };
-    }
-  }
-
-  async clearUserSession(userId: string): Promise<V2VApiResponse<{ message: string }>> {
-    try {
-      const response = await apiClient.delete<{ message: string }>(`/voice/sessions/${userId}`);
-      return { success: true, data: response };
-    } catch (error) {
-      return {
-        success: false,
-        error: { detail: error instanceof Error ? error.message : 'Failed to clear session' }
-      };
-    }
-  }
-
-  async getServiceStats(): Promise<V2VApiResponse<VoiceServiceStats>> {
-    try {
-      const response = await apiClient.get<VoiceServiceStats>('/voice/stats');
-      return { success: true, data: response };
-    } catch (error) {
-      return {
-        success: false,
-        error: { detail: error instanceof Error ? error.message : 'Failed to get service stats' }
-      };
-    }
-  }
-
-  // WebSocket Methods
+  // WebSocket Connection
   async connect(userId: string): Promise<boolean> {
     try {
       if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
@@ -196,16 +128,15 @@ export class V2VService {
       this._connectionState = 'connecting';
       this.onConnectionChange?.(this._connectionState);
 
-      const token = localStorage.getItem('access_token');
-      const wsUrl = `${this.config.websocketUrl}/${userId}${token ? `?token=${token}` : ''}`;
+      // Correct WebSocket URL based on backend structure
+      const wsUrl = `ws://localhost:8000/api/v1/voice/ws/v2v/${userId}`;
       
       this.websocket = new WebSocket(wsUrl);
 
       this.websocket.onopen = () => {
         this._connectionState = 'connected';
-        this.reconnectAttempts = 0;
         this.onConnectionChange?.(this._connectionState);
-        this.startPingInterval();
+        console.log('V2V WebSocket connected');
       };
 
       this.websocket.onmessage = (event) => {
@@ -215,30 +146,26 @@ export class V2VService {
       this.websocket.onclose = (event) => {
         this._connectionState = 'disconnected';
         this.onConnectionChange?.(this._connectionState);
-        this.stopPingInterval();
-        
-        if (event.code !== 1000 && this.reconnectAttempts < this.config.reconnectAttempts) {
-          this.scheduleReconnect(userId);
-        }
+        console.log('V2V WebSocket disconnected', event.code, event.reason);
       };
 
-      this.websocket.onerror = () => {
+      this.websocket.onerror = (error) => {
         this._connectionState = 'error';
         this.onConnectionChange?.(this._connectionState);
-        this.onError?.(new Error('WebSocket connection error'));
+        this.onError?.({ message: 'WebSocket connection error' });
+        console.error('V2V WebSocket error:', error);
       };
 
       return true;
     } catch (error) {
       this._connectionState = 'error';
       this.onConnectionChange?.(this._connectionState);
-      this.onError?.(error instanceof Error ? error : new Error('Failed to connect'));
+      this.onError?.({ message: error instanceof Error ? error.message : 'Failed to connect' });
       return false;
     }
   }
 
   disconnect(): void {
-    this.stopPingInterval();
     this.stopRecording();
     
     if (this.websocket) {
@@ -253,75 +180,39 @@ export class V2VService {
   // WebSocket Message Handling
   private handleWebSocketMessage(data: string): void {
     try {
-      const message: WebSocketMessage = JSON.parse(data);
+      const message = JSON.parse(data);
+      console.log('Received message:', message);
       
       switch (message.type) {
         case 'connection_status':
-          this.handleConnectionStatus(message as ConnectionStatusMessage);
+          console.log('Connection status:', message);
           break;
         case 'processing_status':
-          this.handleProcessingStatus(message as ProcessingStatusMessage);
+          this._processingState = message.status === 'processing' ? 'processing' : 'idle';
+          this.onProcessingStatus?.(message);
           break;
         case 'voice_response':
-          this.handleVoiceResponse(message as VoiceResponseMessage);
-          break;
-        case 'lip_sync_data':
-          this.handleLipSyncData(message as LipSyncDataMessage);
+          this._processingState = 'idle';
+          this.onVoiceResponse?.(message);
           break;
         case 'conversation_history':
-          this.handleConversationHistory(message as ConversationHistoryMessage);
-          break;
-        case 'history_cleared':
-          this.handleHistoryCleared(message as HistoryClearedMessage);
+          this.onConversationHistory?.(message);
           break;
         case 'error':
-          this.handleError(message as ErrorMessage);
-          break;
-        case 'pong':
-          // Handle pong response
+          this.onError?.({ message: message.message });
           break;
         default:
           console.warn('Unknown message type:', message.type);
       }
     } catch (error) {
-      this.onError?.(new Error('Failed to parse WebSocket message'));
+      this.onError?.({ message: 'Failed to parse WebSocket message' });
     }
   }
 
-  private handleConnectionStatus(message: ConnectionStatusMessage): void {
-    console.log('Connection status:', message);
-  }
-
-  private handleProcessingStatus(message: ProcessingStatusMessage): void {
-    this._processingState = message.status === 'processing' ? 'processing' : 'idle';
-    this.onProcessingStatus?.(message);
-  }
-
-  private handleVoiceResponse(message: VoiceResponseMessage): void {
-    this._processingState = 'idle';
-    this.onVoiceResponse?.(message);
-  }
-
-  private handleLipSyncData(message: LipSyncDataMessage): void {
-    this.onLipSyncData?.(message);
-  }
-
-  private handleConversationHistory(message: ConversationHistoryMessage): void {
-    this.onConversationHistory?.(message);
-  }
-
-  private handleHistoryCleared(message: HistoryClearedMessage): void {
-    console.log('History cleared:', message.message);
-  }
-
-  private handleError(message: ErrorMessage): void {
-    this.onError?.(new Error(message.message));
-  }
-
-  // WebSocket Message Sending
-  private sendMessage(message: WebSocketMessage): boolean {
+  // Send message to WebSocket
+  private sendMessage(message: any): boolean {
     if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) {
-      this.onError?.(new Error('WebSocket not connected'));
+      this.onError?.({ message: 'WebSocket not connected' });
       return false;
     }
 
@@ -329,12 +220,12 @@ export class V2VService {
       this.websocket.send(JSON.stringify(message));
       return true;
     } catch (error) {
-      this.onError?.(error instanceof Error ? error : new Error('Failed to send message'));
+      this.onError?.({ message: 'Failed to send message' });
       return false;
     }
   }
 
-  // Voice Input Methods
+  // Voice Recording
   async startRecording(): Promise<boolean> {
     try {
       if (this._isRecording) {
@@ -343,15 +234,15 @@ export class V2VService {
 
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
-          sampleRate: this.audioConfig.sampleRate,
-          channelCount: this.audioConfig.channels,
+          sampleRate: 16000,
+          channelCount: 1,
           echoCancellation: true,
           noiseSuppression: true
         } 
       });
 
       this.mediaRecorder = new MediaRecorder(stream, {
-        mimeType: `audio/${this.audioConfig.format};codecs=opus`
+        mimeType: 'audio/webm;codecs=opus'
       });
 
       this.audioChunks = [];
@@ -365,13 +256,13 @@ export class V2VService {
         this.processRecording();
       };
 
-      this.mediaRecorder.start(100); // Collect data every 100ms
+      this.mediaRecorder.start(100);
       this._isRecording = true;
       this._processingState = 'recording';
 
       return true;
     } catch (error) {
-      this.onError?.(error instanceof Error ? error : new Error('Failed to start recording'));
+      this.onError?.({ message: 'Failed to start recording: ' + (error instanceof Error ? error.message : 'Unknown error') });
       return false;
     }
   }
@@ -385,29 +276,50 @@ export class V2VService {
   }
 
   private async processRecording(): Promise<void> {
-    if (this.audioChunks.length === 0) return;
+    if (this.audioChunks.length === 0) {
+      console.warn('No audio chunks to process');
+      return;
+    }
 
     try {
       const audioBlob = new Blob(this.audioChunks, { 
-        type: `audio/${this.audioConfig.format}` 
+        type: 'audio/webm' 
       });
       
-      const base64Audio = await this.blobToBase64(audioBlob);
+      console.log('Audio blob size:', audioBlob.size, 'bytes');
       
-      const message: VoiceInputMessage = {
+      if (audioBlob.size === 0) {
+        console.error('Audio blob is empty');
+        this.onError?.({ message: 'Recorded audio is empty' });
+        return;
+      }
+      
+      const base64Audio = await this.blobToBase64(audioBlob);
+      console.log('Base64 audio length:', base64Audio.length);
+      
+      if (!base64Audio || base64Audio.length === 0) {
+        console.error('Base64 audio is empty');
+        this.onError?.({ message: 'Failed to encode audio' });
+        return;
+      }
+      
+      const message = {
         type: 'voice_input',
         audio_data: base64Audio
       };
 
+      console.log('Sending voice input message');
       this.sendMessage(message);
       this.audioChunks = [];
     } catch (error) {
-      this.onError?.(error instanceof Error ? error : new Error('Failed to process recording'));
+      console.error('Error processing recording:', error);
+      this.onError?.({ message: 'Failed to process recording' });
     }
   }
 
+  // Send text input
   sendTextInput(text: string): boolean {
-    const message: TextInputMessage = {
+    const message = {
       type: 'text_input',
       text: text
     };
@@ -417,35 +329,54 @@ export class V2VService {
   // Audio Playback
   async playAudioResponse(audioData: string): Promise<void> {
     try {
-      if (!this.audioContext) {
-        this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        this.gainNode = this.audioContext.createGain();
-        this.gainNode.connect(this.audioContext.destination);
+      // Stop current audio if playing
+      if (this.currentAudio) {
+        this.currentAudio.pause();
+        this.currentAudio = null;
       }
-
-      if (this.audioContext.state === 'suspended') {
-        await this.audioContext.resume();
-      }
-
-      const audioBuffer = await this.base64ToAudioBuffer(audioData);
-      
-      if (this.sourceNode) {
-        this.sourceNode.stop();
-      }
-
-      this.sourceNode = this.audioContext.createBufferSource();
-      this.sourceNode.buffer = audioBuffer;
-      this.sourceNode.connect(this.gainNode!);
 
       this._processingState = 'playing';
-      this.sourceNode.onended = () => {
+      
+      // Notify about processing state change
+      this.onProcessingStatus?.({ status: 'playing', message: 'Playing audio response' });
+      
+      // Create audio element and play
+      this.currentAudio = new Audio();
+      this.currentAudio.src = `data:audio/mp3;base64,${audioData}`;
+      
+      this.currentAudio.onended = () => {
         this._processingState = 'idle';
+        this.currentAudio = null;
+        // Notify about processing state change
+        this.onProcessingStatus?.({ status: 'idle', message: 'Audio playback finished' });
       };
 
-      this.sourceNode.start();
+      this.currentAudio.onerror = () => {
+        this._processingState = 'idle';
+        this.currentAudio = null;
+        this.onError?.({ message: 'Failed to play audio' });
+        // Notify about processing state change
+        this.onProcessingStatus?.({ status: 'idle', message: 'Audio playback error' });
+      };
+
+      await this.currentAudio.play();
     } catch (error) {
-      this.onError?.(error instanceof Error ? error : new Error('Failed to play audio'));
+      this._processingState = 'idle';
+      this.onError?.({ message: 'Failed to play audio response' });
+      // Notify about processing state change
+      this.onProcessingStatus?.({ status: 'idle', message: 'Audio playback failed' });
     }
+  }
+
+  // Conversation Management
+  requestConversationHistory(): boolean {
+    const message = { type: 'get_history' };
+    return this.sendMessage(message);
+  }
+
+  clearConversationHistory(): boolean {
+    const message = { type: 'clear_history' };
+    return this.sendMessage(message);
   }
 
   // Utility Methods
@@ -459,65 +390,6 @@ export class V2VService {
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
-  }
-
-  private async base64ToAudioBuffer(base64Data: string): Promise<AudioBuffer> {
-    if (!this.audioContext) {
-      throw new Error('Audio context not initialized');
-    }
-
-    const binaryString = atob(base64Data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    return await this.audioContext.decodeAudioData(bytes.buffer);
-  }
-
-  // WebSocket Management
-  private startPingInterval(): void {
-    this.pingInterval = setInterval(() => {
-      this.sendPing();
-    }, this.config.pingInterval);
-  }
-
-  private stopPingInterval(): void {
-    if (this.pingInterval) {
-      clearInterval(this.pingInterval);
-      this.pingInterval = null;
-    }
-  }
-
-  private sendPing(): void {
-    const message: PingMessage = { type: 'ping' };
-    this.sendMessage(message);
-  }
-
-  private scheduleReconnect(userId: string): void {
-    this.reconnectAttempts++;
-    setTimeout(() => {
-      this.connect(userId);
-    }, this.config.reconnectDelay * this.reconnectAttempts);
-  }
-
-  // Conversation Management
-  requestConversationHistory(): boolean {
-    const message: WebSocketMessage = { type: 'get_history' };
-    return this.sendMessage(message);
-  }
-
-  clearConversationHistory(): boolean {
-    const message: WebSocketMessage = { type: 'clear_history' };
-    return this.sendMessage(message);
-  }
-
-  requestLipSyncData(text: string): boolean {
-    const message: WebSocketMessage = { 
-      type: 'get_lip_sync_data',
-      text: text
-    };
-    return this.sendMessage(message);
   }
 }
 

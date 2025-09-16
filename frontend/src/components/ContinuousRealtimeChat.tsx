@@ -36,7 +36,7 @@ const ContinuousRealtimeChat: React.FC = () => {
   const wsRef = useRef<WebSocket | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const audioContextRef = useRef<AudioContext | null>(null);
+  // const audioContextRef = useRef<AudioContext | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Подключение к WebSocket

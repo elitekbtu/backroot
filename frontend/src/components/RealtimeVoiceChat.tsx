@@ -25,7 +25,7 @@ const RealtimeVoiceChat: React.FC<RealtimeVoiceChatProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [currentResponse, setCurrentResponse] = useState('');
+  // const [currentResponse, setCurrentResponse] = useState('');
   
   const wsRef = useRef<WebSocket | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -113,7 +113,7 @@ const RealtimeVoiceChat: React.FC<RealtimeVoiceChatProps> = ({
         addMessage(message.transcript, 'user');
         // Add AI response
         addMessage(message.ai_response, 'ai');
-        setCurrentResponse('');
+        // setCurrentResponse('');
         
         // Play audio response
         if (message.audio_response) {
