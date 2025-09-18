@@ -134,7 +134,7 @@ export const Coin3D: React.FC<Coin3DProps> = React.memo(({ coin, position, onCli
         color={hovered ? colors.base : '#FFFFFF'}
         anchorX="center"
         anchorY="middle"
-        font="/fonts/inter-bold.woff"
+        font="https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiJ-Ek-_EeA.woff2"
         maxWidth={1.8}
         outlineWidth={0.02}
         outlineColor="#000000"
@@ -151,7 +151,7 @@ export const Coin3D: React.FC<Coin3DProps> = React.memo(({ coin, position, onCli
         anchorX="center"
         anchorY="middle"
         maxWidth={1.6}
-        font="/fonts/inter-regular.woff"
+        font="https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiJ-Ek-_EeA.woff2"
         outlineWidth={0.01}
         outlineColor="#000000"
       >

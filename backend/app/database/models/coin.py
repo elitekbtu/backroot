@@ -25,3 +25,6 @@ class Coin(Base):
     
     created_at = Column(DateTime, nullable=False, default=func.now())
     updated_at = Column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    user_collections = relationship("UserCoinCollection", back_populates="coin", cascade="all, delete-orphan")

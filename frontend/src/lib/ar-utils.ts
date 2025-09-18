@@ -33,15 +33,36 @@ export const isAndroidDevice = (): boolean => {
   return /Android/.test(userAgent);
 };
 
+// Get available cameras
+export const getAvailableCameras = async (): Promise<MediaDeviceInfo[]> => {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    return devices.filter(device => device.kind === 'videoinput');
+  } catch (error) {
+    console.error('Error getting cameras:', error);
+    return [];
+  }
+};
+
 // Check if device has camera access
 export const hasCameraAccess = async (): Promise<boolean> => {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      video: { 
+        facingMode: 'environment' // Back camera for AR
+      } 
+    });
     stream.getTracks().forEach(track => track.stop());
     return true;
   } catch {
     return false;
   }
+};
+
+// Check if device has multiple cameras
+export const hasMultipleCameras = async (): Promise<boolean> => {
+  const cameras = await getAvailableCameras();
+  return cameras.length > 1;
 };
 
 // Get device capabilities for AR
