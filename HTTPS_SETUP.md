@@ -99,3 +99,26 @@ curl -I https://46.101.187.24
 1. **Ошибка "SSL certificate problem"**: Убедитесь, что сертификаты правильно смонтированы в контейнер
 2. **Порт 443 недоступен**: Проверьте, что порт 443 открыт в файрволе
 3. **CORS ошибки**: Убедитесь, что HTTPS домен добавлен в BACKEND_CORS_ORIGINS
+4. **WebSocket Mixed Content ошибки**: 
+   - Убедитесь, что все WebSocket URL используют `wss://` вместо `ws://`
+   - Проверьте, что nginx правильно проксирует WebSocket соединения
+   - Убедитесь, что все WebSocket роутеры подключены в backend API
+
+## Исправленные проблемы
+
+### WebSocket Mixed Content Error
+**Проблема**: `Mixed Content: The page at 'https://46.101.187.24/dashboard/v2v' was loaded over HTTPS, but attempted to connect to the insecure WebSocket endpoint 'ws://46.101.187.24:8000/api/v1/voice/ws/v2v/1'`
+
+**Решение**:
+1. Обновлены все WebSocket URL в frontend с `ws://` на `wss://`
+2. Добавлены nginx location блоки для проксирования WebSocket соединений
+3. Подключены все WebSocket роутеры в backend API
+
+**Измененные файлы**:
+- `frontend/src/api/v2v.ts`
+- `frontend/src/components/ContinuousRealtimeChat.tsx`
+- `frontend/src/components/OptimizedRealtimeChat.tsx`
+- `frontend/src/components/RealtimeVoiceChat.tsx`
+- `frontend/src/components/RealtimeVoice.tsx`
+- `frontend/nginx.conf`
+- `backend/app/api/api.py`

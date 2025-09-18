@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = Field("gpt-4o", env="OPENAI_MODEL")
     OPENAI_TTS_MODEL: str = Field("tts-1", env="OPENAI_TTS_MODEL")
     OPENAI_STT_MODEL: str = Field("whisper-1", env="OPENAI_STT_MODEL")
+    OPENAI_REALTIME_MODEL: str = Field("gpt-4o-realtime-preview-2024-10-01", env="OPENAI_REALTIME_MODEL")
 
 
 @lru_cache

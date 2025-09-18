@@ -129,7 +129,7 @@ export class V2VService {
       this.onConnectionChange?.(this._connectionState);
 
       // Correct WebSocket URL based on backend structure
-      const wsUrl = `ws://46.101.187.24:8000/api/v1/voice/ws/v2v/${userId}`;
+      const wsUrl = `wss://46.101.187.24/api/v1/voice/ws/v2v/${userId}`;
       
       this.websocket = new WebSocket(wsUrl);
 
