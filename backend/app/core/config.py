@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     OPENAI_STT_MODEL: str = Field("whisper-1", env="OPENAI_STT_MODEL")
     OPENAI_REALTIME_MODEL: str = Field("gpt-4o-realtime-preview-2024-10-01", env="OPENAI_REALTIME_MODEL")
 
+    # Groq configuration
+    GROQ_API_KEY: str = Field("", env="GROQ_API_KEY")
+    GROQ_MODEL: str = Field("llama-3.1-70b-versatile", env="GROQ_MODEL")
+
 
 @lru_cache
 def get_settings() -> Settings:

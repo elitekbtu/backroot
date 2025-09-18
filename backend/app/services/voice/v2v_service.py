@@ -6,6 +6,7 @@ from fastapi import WebSocket
 
 from app.core.config import get_settings
 from .openai_client import OpenAIClient
+from .groq_client import GroqClient
 from .audio_processor import AudioProcessor
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,7 @@ class V2VWebSocketService:
     
     def __init__(self):
         self.openai_client = OpenAIClient()
+        self.groq_client = GroqClient()
         self.audio_processor = AudioProcessor()
         self.active_connections: Dict[str, WebSocket] = {}
         self.user_sessions: Dict[str, Dict[str, Any]] = {}
@@ -123,8 +125,8 @@ class V2VWebSocketService:
             # Process audio and convert to text using OpenAIClient directly
             transcript = await self.openai_client.speech_to_text(audio_data)
             
-            # Generate AI response
-            ai_response = await self.openai_client.generate_response(transcript, user_id, self.user_sessions)
+            # Generate AI response using Groq LLM
+            ai_response = await self.groq_client.generate_response(transcript, user_id, self.user_sessions)
             
             # Convert AI response to speech
             audio_response = await self.openai_client.text_to_speech(ai_response)
@@ -187,8 +189,8 @@ class V2VWebSocketService:
             if not text_input:
                 raise ValueError("No text provided")
             
-            # Generate AI response
-            ai_response = await self.openai_client.generate_response(text_input, user_id, self.user_sessions)
+            # Generate AI response using Groq LLM
+            ai_response = await self.groq_client.generate_response(text_input, user_id, self.user_sessions)
             
             # Convert AI response to speech
             audio_response = await self.openai_client.text_to_speech(ai_response)
@@ -453,7 +455,7 @@ class V2VWebSocketService:
             self.user_sessions[user_id]["conversation_history"] = []
     
     async def test_models(self) -> dict:
-        """Test if all OpenAI models are working."""
+        """Test if all models are working (Groq for LLM, OpenAI for TTS/STT)."""
         try:
             results = {
                 "gpt_model": True,  # Assume GPT works if we can create the client
