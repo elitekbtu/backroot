@@ -27,7 +27,7 @@ class OpenAIClient:
             conversation_history = session.get("conversation_history", [])
             
             # Build conversation context
-            system_prompt = custom_system_prompt or "You are a helpful AI assistant. Respond naturally and conversationally. Keep responses concise but helpful."
+            system_prompt = custom_system_prompt or "You are a helpful AI assistant. You must respond in Kazakh language (қазақ тілі). All your responses should be in Kazakh, using proper Kazakh grammar and vocabulary. Respond naturally and conversationally. Keep responses concise but helpful."
             
             messages = [
                 {
@@ -82,8 +82,7 @@ class OpenAIClient:
             response = await self.client.audio.transcriptions.create(
                 model=self.stt_model,
                 file=audio_file,
-                response_format="text",
-                language="en"  # Optional: specify language for better accuracy
+                response_format="text"
             )
             return response.strip()
             

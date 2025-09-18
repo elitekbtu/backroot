@@ -279,7 +279,7 @@ class V2VWebSocketService:
                 "visemes": phonemes,
                 "timing": self._generate_enhanced_timing_data(phonemes, total_duration),
                 "duration": total_duration,
-                "language": "en",
+                "language": "kk",  # Kazakh language
                 "text": text,
                 "word_count": word_count
             }
@@ -293,7 +293,7 @@ class V2VWebSocketService:
                 "visemes": [],
                 "timing": [],
                 "duration": 0,
-                "language": "en",
+                "language": "kk",  # Kazakh language
                 "text": text,
                 "word_count": len(text.split())
             }
@@ -301,8 +301,13 @@ class V2VWebSocketService:
     def _text_to_phonemes_enhanced(self, text: str) -> list:
         """Convert text to enhanced phonemes for better lip-sync."""
         # Enhanced phoneme mapping based on TalkingHead requirements
+        # Includes both English and Kazakh sounds
         phoneme_map = {
-            'a': 'A', 'e': 'E', 'i': 'I', 'o': 'O', 'u': 'U',  # Vowels
+            # English vowels
+            'a': 'A', 'e': 'E', 'i': 'I', 'o': 'O', 'u': 'U',
+            # Kazakh vowels (Cyrillic)
+            'а': 'A', 'ә': 'A', 'е': 'E', 'и': 'I', 'о': 'O', 'ө': 'O', 'ұ': 'U', 'ү': 'U', 'ы': 'I', 'і': 'I',
+            # English consonants
             'b': 'B', 'p': 'B', 'm': 'B',  # Closed lips
             'f': 'F', 'v': 'F',  # Lower lip + upper teeth
             'w': 'W',  # Rounded lips
@@ -314,7 +319,20 @@ class V2VWebSocketService:
             'th': 'TH',  # Interdental
             'r': 'R',  # Retroflex
             'h': 'H',  # Glottal
-            'y': 'Y'   # Palatal glide
+            'y': 'Y',  # Palatal glide
+            # Kazakh consonants (Cyrillic)
+            'б': 'B', 'п': 'B', 'м': 'B',  # Closed lips
+            'в': 'F', 'ф': 'F',  # Lower lip + upper teeth
+            'л': 'L',  # Tongue position
+            'д': 'D', 'т': 'D', 'н': 'D',  # Tongue tip
+            'к': 'K', 'г': 'K', 'қ': 'K', 'ғ': 'K',  # Back of tongue
+            'с': 'S', 'з': 'S', 'ц': 'S',  # Fricative
+            'ш': 'SH', 'щ': 'SH', 'ч': 'SH', 'ж': 'SH',  # Palatal
+            'р': 'R',  # Retroflex
+            'х': 'H',  # Glottal
+            'й': 'Y',  # Palatal glide
+            'ң': 'N',  # Velar nasal
+            'һ': 'H',  # Glottal fricative
         }
         
         phonemes = []
@@ -335,11 +353,11 @@ class V2VWebSocketService:
             if char in phoneme_map:
                 phonemes.append(phoneme_map[char])
             elif char.isalpha():
-                # Default mapping for other letters
-                if char in 'aeiou':
-                    phonemes.append('A')  # Open mouth
+                # Default mapping for other letters (both English and Kazakh)
+                if char in 'aeiouаәеиоөұүыі':
+                    phonemes.append('A')  # Open mouth for vowels
                 else:
-                    phonemes.append('X')  # Neutral
+                    phonemes.append('X')  # Neutral for consonants
             elif char.isspace():
                 # Add small pause for spaces
                 phonemes.append('P')
@@ -563,18 +581,23 @@ class V2VWebSocketService:
         """Generate location-aware system prompt for AI."""
         base_prompt = """You are a helpful AI assistant with voice-to-voice capabilities. You can speak naturally and have realistic lip-sync animations. You are designed to be conversational, helpful, and engaging.
 
+IMPORTANT: You must respond in Kazakh language (қазақ тілі). All your responses should be in Kazakh, using proper Kazakh grammar and vocabulary.
+
 Key capabilities:
-- Voice-to-voice conversation with natural speech
+- Voice-to-voice conversation with natural speech in Kazakh
 - Realistic lip-sync animations that match your speech
 - Context-aware responses based on conversation history
-- Natural, conversational tone suitable for voice interaction
+- Natural, conversational tone suitable for voice interaction in Kazakh
 
 Guidelines:
+- Always respond in Kazakh language
 - Keep responses concise and natural for voice delivery
 - Use appropriate pauses and emphasis
 - Be helpful and engaging
 - Ask follow-up questions when appropriate
-- Maintain context throughout the conversation"""
+- Maintain context throughout the conversation
+- Use proper Kazakh grammar and vocabulary
+- Be culturally appropriate for Kazakh speakers"""
 
         # Add location context if available
         if user_id in self.user_sessions:
@@ -588,25 +611,25 @@ Guidelines:
                 
                 location_prompt = f"""
 
-LOCATION CONTEXT:
-You are currently in {city_name}{f', {country}' if country else ''}. The local time is {local_time} ({timezone}).
+ЖЕРЛЕСУ КОНТЕКСТІ:
+Сіз қазір {city_name}{f', {country}' if country else ''} қаласындасыз. Жергілікті уақыт {local_time} ({timezone}).
 
-As a local guide, you can help with:
-- Recommendations for places to visit, eat, and activities
-- Directions and transportation options
-- Local customs, culture, and tips
-- Weather and seasonal information
-- Historical and cultural insights about the area
-- Shopping, entertainment, and dining suggestions
+Жергілікті гид ретінде сіз көмектесе аласыз:
+- Көруге болатын орындар, тамақтану және белсенділік ұсыныстары
+- Бағыттар және көлік опциялары
+- Жергілікті дәстүрлер, мәдениет және кеңестер
+- Ауа-райы және маусымдық ақпарат
+- Аймақ туралы тарихи және мәдени түсініктер
+- Сатып алу, ойын-сауық және тамақтану ұсыныстары
 
-When users ask about:
-- "What to do here" or "places to visit" - suggest local attractions and activities
-- "Where to eat" - recommend local restaurants and food experiences
-- "How to get around" - provide transportation options and directions
-- "Weather" - give current conditions and forecasts
-- "Local tips" - share cultural insights and practical advice
+Пайдаланушылар сұрағанда:
+- "Мұнда не істеуге болады" немесе "көруге болатын орындар" - жергілікті көрікті жерлер мен белсенділіктерді ұсыну
+- "Қайда тамақтануға болады" - жергілікті ресторандар мен тамақ тәжірибелерін ұсыну
+- "Қалай жүруге болады" - көлік опциялары мен бағыттарды беру
+- "Ауа-райы" - ағымдағы жағдайлар мен болжамдарды беру
+- "Жергілікті кеңестер" - мәдени түсініктер мен практикалық кеңестерді бөлісу
 
-Always be specific to {city_name} and provide practical, actionable advice. If you don't know something specific about the location, be honest but still try to be helpful with general travel advice."""
+{city_name} қаласына арнайы назар аударыңыз және практикалық, іс-әрекетке жарамды кеңестер беріңіз. Егер сіз орын туралы нақты бірдеңе білмесеңіз, шынайы болыңыз, бірақ жалпы саяхат кеңестерімен көмектесуге тырысыңыз."""
 
                 # Add attractions if available
                 attractions = location_context.get("attractions", [])
@@ -614,10 +637,10 @@ Always be specific to {city_name} and provide practical, actionable advice. If y
                     attraction_list = "\n".join([f"- {att['name']}: {att['description']}" for att in attractions[:5]])
                     location_prompt += f"""
 
-POPULAR LOCAL ATTRACTIONS:
+ТАНЫМАЛ ЖЕРГІЛІКТІ КӨРІКТІ ЖЕРЛЕР:
 {attraction_list}
 
-Use these attractions in your recommendations when appropriate."""
+Ұсыныстарда осы көрікті жерлерді қолданыңыз."""
 
                 # Add transportation if available
                 transportation = location_context.get("transportation", [])
@@ -625,10 +648,10 @@ Use these attractions in your recommendations when appropriate."""
                     transport_list = "\n".join([f"- {trans['name']}: {trans['description']} ({trans['estimated_time']}, {trans.get('estimated_cost', 'Cost varies')})" for trans in transportation[:3]])
                     location_prompt += f"""
 
-TRANSPORTATION OPTIONS:
+КӨЛІК ОПЦИЯЛАРЫ:
 {transport_list}
 
-Use this information when helping with directions and getting around."""
+Бағыттар мен жүруге көмектескенде осы ақпаратты пайдаланыңыз."""
 
                 base_prompt += location_prompt
 

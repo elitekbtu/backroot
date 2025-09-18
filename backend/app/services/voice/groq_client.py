@@ -83,7 +83,7 @@ class GroqClient:
             session = user_sessions.get(user_id, {})
             conversation_history = session.get("conversation_history", [])
 
-            system_prompt = custom_system_prompt or "You are a helpful AI assistant. Respond naturally and conversationally. Keep responses concise but helpful."
+            system_prompt = custom_system_prompt or "You are a helpful AI assistant. You must respond in Kazakh language (қазақ тілі). All your responses should be in Kazakh, using proper Kazakh grammar and vocabulary. Respond naturally and conversationally. Keep responses concise but helpful."
             
             messages = [
                 {

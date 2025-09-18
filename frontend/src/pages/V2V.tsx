@@ -223,15 +223,15 @@ const V2V: React.FC = () => {
   }, []);
 
 
-  // Convert text to phonemes (simplified)
+  // Convert text to phonemes (simplified) - supports both English and Kazakh
   const textToPhonemes = (word: string): string[] => {
     const phonemes: string[] = [];
     
     for (let i = 0; i < word.length; i++) {
-      const char = word[i];
-      const nextChar = word[i + 1];
+      const char = word[i].toLowerCase();
+      const nextChar = word[i + 1]?.toLowerCase();
       
-      // Vowels
+      // English vowels
       if ('aeiou'.includes(char)) {
         if (char === 'a') phonemes.push('aa');
         else if (char === 'e') phonemes.push('E');
@@ -239,7 +239,15 @@ const V2V: React.FC = () => {
         else if (char === 'o') phonemes.push('O');
         else if (char === 'u') phonemes.push('U');
       }
-      // Consonants
+      // Kazakh vowels (Cyrillic)
+      else if ('аәеиоөұүыі'.includes(char)) {
+        if (char === 'а' || char === 'ә') phonemes.push('aa');
+        else if (char === 'е') phonemes.push('E');
+        else if (char === 'и' || char === 'ы' || char === 'і') phonemes.push('I');
+        else if (char === 'о' || char === 'ө') phonemes.push('O');
+        else if (char === 'ұ' || char === 'ү') phonemes.push('U');
+      }
+      // English consonants
       else if (char === 'p' || char === 'b' || char === 'm') {
         phonemes.push('PP');
       } else if (char === 'f' || char === 'v') {
@@ -275,6 +283,30 @@ const V2V: React.FC = () => {
       } else if (char === 't' && nextChar === 'h') {
         phonemes.push('TH');
         i++; // Skip next character
+      }
+      // Kazakh consonants (Cyrillic)
+      else if (char === 'п' || char === 'б' || char === 'м') {
+        phonemes.push('PP');
+      } else if (char === 'ф' || char === 'в') {
+        phonemes.push('FF');
+      } else if (char === 'т' || char === 'д') {
+        phonemes.push('DD');
+      } else if (char === 'к' || char === 'г' || char === 'қ' || char === 'ғ') {
+        phonemes.push('kk');
+      } else if (char === 'с' || char === 'з' || char === 'ц') {
+        phonemes.push('SS');
+      } else if (char === 'н' || char === 'ң') {
+        phonemes.push('nn');
+      } else if (char === 'р') {
+        phonemes.push('RR');
+      } else if (char === 'л') {
+        phonemes.push('nn'); // Similar to 'n'
+      } else if (char === 'ш' || char === 'щ' || char === 'ч' || char === 'ж') {
+        phonemes.push('CH');
+      } else if (char === 'х' || char === 'һ') {
+        phonemes.push('aa'); // Open mouth for 'h'
+      } else if (char === 'й') {
+        phonemes.push('I'); // Similar to 'i'
       } else {
         // Default to silence for unknown characters
         phonemes.push('sil');
@@ -435,12 +467,18 @@ const V2V: React.FC = () => {
           }]);
 
           // Set avatar mood based on response content (simple sentiment analysis)
+          // Support both English and Kazakh keywords
           const responseText = response.ai_response.toLowerCase();
-          if (responseText.includes('happy') || responseText.includes('great') || responseText.includes('wonderful')) {
+          if (responseText.includes('happy') || responseText.includes('great') || responseText.includes('wonderful') ||
+              responseText.includes('қуанышты') || responseText.includes('жақсы') || responseText.includes('керемет') ||
+              responseText.includes('тамаша') || responseText.includes('әдемі')) {
             setAvatarMood('happy');
-          } else if (responseText.includes('sad') || responseText.includes('sorry') || responseText.includes('unfortunately')) {
+          } else if (responseText.includes('sad') || responseText.includes('sorry') || responseText.includes('unfortunately') ||
+                     responseText.includes('қайғылы') || responseText.includes('кешіріңіз') || responseText.includes('өкінішті') ||
+                     responseText.includes('жаман') || responseText.includes('ауыр')) {
             setAvatarMood('sad');
-          } else if (responseText.includes('angry') || responseText.includes('frustrated')) {
+          } else if (responseText.includes('angry') || responseText.includes('frustrated') ||
+                     responseText.includes('ашулы') || responseText.includes('ашу') || responseText.includes('ызалы')) {
             setAvatarMood('angry');
           } else {
             setAvatarMood('neutral');
