@@ -77,7 +77,8 @@ const ContinuousRealtimeChat: React.FC = () => {
     setStatus('Подключение...');
 
     try {
-      const wsUrl = `wss://46.101.187.24/api/v1/realtime/ws/${user.id}/audio`;
+      const wsBaseUrl = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000';
+      const wsUrl = `${wsBaseUrl}/api/v1/realtime/ws/${user.id}/audio`;
       console.log('🔌 Attempting to connect to:', wsUrl, 'attempt:', attemptId);
       console.log('WebSocket constructor called, attempt:', attemptId);
       wsRef.current = new WebSocket(wsUrl);

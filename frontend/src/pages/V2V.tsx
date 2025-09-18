@@ -695,7 +695,7 @@ const V2V: React.FC = () => {
           <h2 className="text-xl font-semibold mb-4">Информация о сервисе</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
-              <strong>WebSocket URL:</strong> ws://localhost:8000/api/v1/voice/ws/v2v/{userId}
+              <strong>WebSocket URL:</strong> {import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000'}/api/v1/voice/ws/v2v/{userId}
             </div>
             <div>
               <strong>Пользователь:</strong> {user?.username || 'Анонимный'}

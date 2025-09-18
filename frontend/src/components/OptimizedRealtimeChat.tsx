@@ -64,7 +64,8 @@ const OptimizedRealtimeChat: React.FC = () => {
     setStatus('Подключение к OpenAI Realtime API...');
 
     try {
-      const wsUrl = `wss://46.101.187.24/api/v1/realtime-optimized/ws/${user.id}/audio`;
+      const wsBaseUrl = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000';
+      const wsUrl = `${wsBaseUrl}/api/v1/realtime-optimized/ws/${user.id}/audio`;
       console.log('🔌 Attempting to connect to:', wsUrl, 'attempt:', attemptId);
       
       wsRef.current = new WebSocket(wsUrl);

@@ -16,7 +16,7 @@ interface RealtimeMessage {
 
 const RealtimeVoice: React.FC<RealtimeVoiceProps> = ({ 
   userId, 
-  apiBaseUrl = 'ws://localhost:8000' 
+  apiBaseUrl = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000' 
 }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);

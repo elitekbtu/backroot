@@ -129,7 +129,8 @@ export class V2VService {
       this.onConnectionChange?.(this._connectionState);
 
       // Correct WebSocket URL based on backend structure
-      const wsUrl = `ws://localhost:8000/api/v1/voice/ws/v2v/${userId}`;
+      const wsBaseUrl = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000';
+      const wsUrl = `${wsBaseUrl}/api/v1/voice/ws/v2v/${userId}`;
       
       this.websocket = new WebSocket(wsUrl);
 
