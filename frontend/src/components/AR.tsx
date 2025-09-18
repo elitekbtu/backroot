@@ -106,7 +106,7 @@ const ARScene: React.FC<ARSceneProps> = ({ coins, onCoinClick }) => {
           <Environment preset="city" />
 
           {/* Coins */}
-          {generateCoinPositions(coins).map(({ coin, position }) => (
+          {generateCoinPositions(coins).map(({ coin, position }: { coin: CoinResponse; position: [number, number, number] }) => (
             <Coin3D
               key={coin.id}
               coin={coin}
