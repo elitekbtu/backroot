@@ -8,24 +8,30 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import type { LipSyncData, AvatarConfig } from '../types/v2v';
 
-// Oculus Viseme to ARKit Blend Shape mapping
+// Oculus Viseme to ARKit Blend Shape mapping for Ready Player Me
+// Based on ARKit blend shapes and Ready Player Me morph targets
 const VISEME_TO_ARKIT: { [key: string]: { [key: string]: number } } = {
-  'sil': { mouthClose: 1.0 }, // Silence
-  'PP': { mouthPucker: 0.8, mouthClose: 0.3 }, // p, b, m
-  'FF': { mouthLowerDownRight: 0.6, mouthLowerDownLeft: 0.6 }, // f, v
-  'TH': { tongueOut: 0.6, mouthOpen: 0.3 }, // th
-  'DD': { mouthOpen: 0.4, tongueOut: 0.3 }, // t, d
-  'kk': { mouthOpen: 0.5, jawOpen: 0.4 }, // k, g
-  'CH': { mouthPucker: 0.5, mouthOpen: 0.4 }, // ch, j, sh, zh
-  'SS': { mouthSmileLeft: 0.3, mouthSmileRight: 0.3, mouthOpen: 0.2 }, // s, z
-  'nn': { mouthOpen: 0.3, tongueOut: 0.2 }, // n, ng
-  'RR': { mouthFunnel: 0.4, mouthOpen: 0.3 }, // r
-  'aa': { jawOpen: 0.8, mouthOpen: 0.9 }, // a (as in "father")
-  'E': { mouthSmileLeft: 0.6, mouthSmileRight: 0.6, jawOpen: 0.4 }, // e (as in "bed")
-  'I': { mouthSmileLeft: 0.8, mouthSmileRight: 0.8, jawOpen: 0.2 }, // i (as in "bit")
-  'O': { mouthFunnel: 0.8, jawOpen: 0.6 }, // o (as in "hot")
-  'U': { mouthPucker: 0.9, mouthFunnel: 0.7 }, // u (as in "book")
-  'A': { jawOpen: 0.7, mouthOpen: 0.8 }, // Generic open vowel
+  'sil': { mouthClose: 1.0, mouthOpen: 0.0 }, // Silence - mouth closed
+  'PP': { mouthPucker: 0.8, mouthClose: 0.4, mouthOpen: 0.1 }, // p, b, m - lips together
+  'FF': { mouthLowerDownLeft: 0.7, mouthLowerDownRight: 0.7, mouthOpen: 0.2 }, // f, v - lower lip down
+  'TH': { tongueOut: 0.8, mouthOpen: 0.3, jawOpen: 0.2 }, // th - tongue out
+  'DD': { mouthOpen: 0.4, tongueOut: 0.4, jawOpen: 0.3 }, // t, d - tongue touches roof
+  'kk': { mouthOpen: 0.5, jawOpen: 0.6, mouthClose: 0.2 }, // k, g - back of tongue
+  'CH': { mouthPucker: 0.6, mouthOpen: 0.4, jawOpen: 0.3 }, // ch, j, sh, zh - rounded lips
+  'SS': { mouthSmileLeft: 0.4, mouthSmileRight: 0.4, mouthOpen: 0.1, mouthClose: 0.3 }, // s, z - teeth together
+  'nn': { mouthOpen: 0.3, tongueOut: 0.3, jawOpen: 0.2 }, // n, ng - tongue up
+  'RR': { mouthFunnel: 0.5, mouthOpen: 0.3, jawOpen: 0.2 }, // r - rounded lips
+  'aa': { jawOpen: 0.9, mouthOpen: 0.9, mouthClose: 0.0 }, // a (as in "father") - wide open
+  'E': { mouthSmileLeft: 0.7, mouthSmileRight: 0.7, jawOpen: 0.4, mouthOpen: 0.5 }, // e (as in "bed") - smile
+  'I': { mouthSmileLeft: 0.9, mouthSmileRight: 0.9, jawOpen: 0.2, mouthOpen: 0.3 }, // i (as in "bit") - wide smile
+  'O': { mouthFunnel: 0.9, jawOpen: 0.6, mouthOpen: 0.6 }, // o (as in "hot") - rounded
+  'U': { mouthPucker: 0.9, mouthFunnel: 0.8, jawOpen: 0.3, mouthOpen: 0.4 }, // u (as in "book") - very rounded
+  'A': { jawOpen: 0.8, mouthOpen: 0.8, mouthClose: 0.0 }, // Generic open vowel
+  // Additional visemes for better lip sync
+  'EE': { mouthSmileLeft: 0.8, mouthSmileRight: 0.8, jawOpen: 0.3, mouthOpen: 0.4 }, // ee (as in "see")
+  'OO': { mouthPucker: 0.8, mouthFunnel: 0.7, jawOpen: 0.4, mouthOpen: 0.5 }, // oo (as in "food")
+  'AH': { jawOpen: 0.7, mouthOpen: 0.7, mouthClose: 0.0 }, // ah (as in "car")
+  'OH': { mouthFunnel: 0.6, jawOpen: 0.5, mouthOpen: 0.5 }, // oh (as in "go")
 };
 
 // Default Ready Player Me morph target names (for reference)
@@ -280,18 +286,28 @@ export class TalkingHead {
     
     const currentTime = this.clock.getElapsedTime() - this.lipSyncStartTime;
     
-    // Reset all morph targets
-    this.resetMorphTargets();
-    
-    // Find current viseme
+    // Find current viseme with interpolation
     let activeViseme = 'sil';
+    let nextViseme = 'sil';
+    let interpolationFactor = 0;
     
     if (this.currentLipSyncData.timing) {
       // Use timing array if available
-      for (const timing of this.currentLipSyncData.timing) {
+      for (let i = 0; i < this.currentLipSyncData.timing.length; i++) {
+        const timing = this.currentLipSyncData.timing[i];
+        const nextTiming = this.currentLipSyncData.timing[i + 1];
+        
         if (currentTime >= timing.start_time && 
             currentTime <= timing.start_time + timing.duration) {
           activeViseme = timing.viseme;
+          
+          // Calculate interpolation for smooth transitions
+          if (nextTiming) {
+            nextViseme = nextTiming.viseme;
+            const timeInCurrentViseme = currentTime - timing.start_time;
+            const currentVisemeDuration = timing.duration;
+            interpolationFactor = Math.min(timeInCurrentViseme / currentVisemeDuration, 1);
+          }
           break;
         }
       }
@@ -301,13 +317,21 @@ export class TalkingHead {
       for (let i = 0; i < visemes.length; i++) {
         if (currentTime >= times[i] && currentTime <= times[i] + durations[i]) {
           activeViseme = visemes[i];
+          
+          // Calculate interpolation for smooth transitions
+          if (i < visemes.length - 1) {
+            nextViseme = visemes[i + 1];
+            const timeInCurrentViseme = currentTime - times[i];
+            const currentVisemeDuration = durations[i];
+            interpolationFactor = Math.min(timeInCurrentViseme / currentVisemeDuration, 1);
+          }
           break;
         }
       }
     }
     
-    // Apply viseme
-    this.applyViseme(activeViseme);
+    // Apply viseme with interpolation
+    this.applyVisemeWithInterpolation(activeViseme, nextViseme, interpolationFactor);
   }
 
   private resetMorphTargets() {
@@ -318,17 +342,34 @@ export class TalkingHead {
     });
   }
 
-  private applyViseme(viseme: string) {
-    const morphTargets = VISEME_TO_ARKIT[viseme] || VISEME_TO_ARKIT['sil'];
+
+  private applyVisemeWithInterpolation(currentViseme: string, nextViseme: string, interpolationFactor: number) {
+    const currentMorphTargets = VISEME_TO_ARKIT[currentViseme] || VISEME_TO_ARKIT['sil'];
+    const nextMorphTargets = VISEME_TO_ARKIT[nextViseme] || VISEME_TO_ARKIT['sil'];
     
     this.morphTargetMeshes.forEach(mesh => {
       if (!mesh.morphTargetInfluences || !mesh.morphTargetDictionary) return;
       
-      Object.entries(morphTargets).forEach(([targetName, influence]) => {
+      // Get all unique target names from both visemes
+      const allTargetNames = new Set([
+        ...Object.keys(currentMorphTargets),
+        ...Object.keys(nextMorphTargets)
+      ]);
+      
+      allTargetNames.forEach(targetName => {
         if (mesh.morphTargetDictionary) {
           const index = mesh.morphTargetDictionary[targetName];
           if (index !== undefined && mesh.morphTargetInfluences && index < mesh.morphTargetInfluences.length) {
-            mesh.morphTargetInfluences[index] = influence;
+            const currentValue = currentMorphTargets[targetName] || 0;
+            const nextValue = nextMorphTargets[targetName] || 0;
+            
+            // Interpolate between current and next viseme
+            const interpolatedValue = currentValue + (nextValue - currentValue) * interpolationFactor;
+            
+            // Apply with additional smoothing
+            const currentInfluence = mesh.morphTargetInfluences[index];
+            const lerpFactor = 0.4; // Adjust for responsiveness
+            mesh.morphTargetInfluences[index] = currentInfluence + (interpolatedValue - currentInfluence) * lerpFactor;
           }
         }
       });
@@ -458,16 +499,38 @@ export class TalkingHead {
       if (child instanceof THREE.Mesh && child.morphTargetInfluences) {
         this.morphTargetMeshes.push(child);
         
-        // Find head mesh
+        // Create morph target dictionary for faster lookup
+        if (child.morphTargetDictionary === undefined) {
+          child.morphTargetDictionary = {};
+          if (child.morphTargetInfluences && (child as any).morphTargets) {
+            (child as any).morphTargets.forEach((target: any, index: number) => {
+              if (target.name) {
+                child.morphTargetDictionary![target.name] = index;
+              }
+            });
+          }
+        }
+        
+        // Find head mesh (Ready Player Me specific naming)
         const name = child.name.toLowerCase();
         if (name.includes('head') || name.includes('face') || 
-            name.includes('wolf3d_head') || name.includes('wolf3d_teeth')) {
+            name.includes('wolf3d_head') || name.includes('wolf3d_teeth') ||
+            name.includes('headmesh') || name.includes('head_mesh')) {
           this.headMesh = child;
         }
       }
     });
     
     console.log(`Found ${this.morphTargetMeshes.length} meshes with morph targets`);
+    
+    // Log available morph targets for debugging
+    if (this.morphTargetMeshes.length > 0) {
+      const firstMesh = this.morphTargetMeshes[0];
+      if (firstMesh.morphTargetDictionary) {
+        const availableTargets = Object.keys(firstMesh.morphTargetDictionary);
+        console.log('Available morph targets:', availableTargets);
+      }
+    }
   }
 
   public setLipSyncData(lipSyncData: LipSyncData) {

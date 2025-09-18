@@ -1,4 +1,4 @@
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL = 'localhost:8000/api/v1';
 
 class ApiClient {
   private baseURL: string;
