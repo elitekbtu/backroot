@@ -25,6 +25,7 @@ const ARPage: React.FC = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingCoin, setEditingCoin] = useState<CoinResponse | null>(null);
   const [selectedCoin, setSelectedCoin] = useState<CoinResponse | null>(null);
+  const [isKioskMode, setIsKioskMode] = useState(false);
   const [formData, setFormData] = useState<CoinCreate>({
     name: '',
     symbol: '',
@@ -35,6 +36,10 @@ const ARPage: React.FC = () => {
     ar_position_y: 0,
     ar_position_z: -2
   });
+
+  const toggleKioskMode = () => {
+    setIsKioskMode(!isKioskMode);
+  };
 
   // Load coins with error handling
   const loadCoins = useCallback(async (page: number = 1, search?: string, isActive?: boolean | null) => {
@@ -201,44 +206,89 @@ const ARPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="container mx-auto px-4 py-8">
+    <div className={`min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 ${isKioskMode ? 'text-2xl' : ''}`}>
+      <div className="container mx-auto px-4 py-4 sm:py-6 lg:py-8">
+        {/* Kiosk Mode Toggle */}
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={toggleKioskMode}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              isKioskMode 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            } ${isKioskMode ? 'text-xl' : 'text-sm'}`}
+            title={isKioskMode ? 'Exit Kiosk Mode' : 'Enter Kiosk Mode'}
+          >
+            {isKioskMode ? '🖥️ Exit Kiosk' : '📱 Kiosk Mode'}
+          </button>
+        </div>
+
         {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-5xl font-bold text-gray-900 mb-4">
+        <div className="mb-6 sm:mb-8 text-center">
+          <h1 className={`font-bold text-gray-900 mb-4 ${
+            isKioskMode 
+              ? 'text-6xl sm:text-8xl' 
+              : 'text-3xl sm:text-4xl lg:text-5xl'
+          }`}>
             🥽 AR Coin System
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className={`text-gray-600 max-w-2xl mx-auto ${
+            isKioskMode 
+              ? 'text-2xl sm:text-3xl' 
+              : 'text-lg sm:text-xl'
+          }`}>
             Create, manage, and experience cryptocurrency coins in augmented reality
           </p>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-lg p-6 text-center">
-            <div className="text-3xl font-bold text-yellow-500 mb-2">
+        <div className={`grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 ${
+          isKioskMode ? 'gap-8' : 'gap-4 sm:gap-6'
+        }`}>
+          <div className={`bg-white rounded-xl shadow-lg text-center ${
+            isKioskMode ? 'p-8 sm:p-10' : 'p-4 sm:p-6'
+          }`}>
+            <div className={`font-bold text-yellow-500 mb-2 ${
+              isKioskMode ? 'text-5xl sm:text-6xl' : 'text-2xl sm:text-3xl'
+            }`}>
               {coins.filter(coin => coin.is_active).length}
             </div>
-            <div className="text-gray-600">Active Coins</div>
+            <div className={`text-gray-600 ${
+              isKioskMode ? 'text-xl sm:text-2xl' : 'text-sm sm:text-base'
+            }`}>Active Coins</div>
           </div>
-          <div className="bg-white rounded-xl shadow-lg p-6 text-center">
-            <div className="text-3xl font-bold text-blue-500 mb-2">
+          <div className={`bg-white rounded-xl shadow-lg text-center ${
+            isKioskMode ? 'p-8 sm:p-10' : 'p-4 sm:p-6'
+          }`}>
+            <div className={`font-bold text-blue-500 mb-2 ${
+              isKioskMode ? 'text-5xl sm:text-6xl' : 'text-2xl sm:text-3xl'
+            }`}>
               {coins.filter(coin => coin.ar_model_url).length}
             </div>
-            <div className="text-gray-600">AR Ready</div>
+            <div className={`text-gray-600 ${
+              isKioskMode ? 'text-xl sm:text-2xl' : 'text-sm sm:text-base'
+            }`}>AR Ready</div>
           </div>
-          <div className="bg-white rounded-xl shadow-lg p-6 text-center">
-            <div className="text-3xl font-bold text-green-500 mb-2">
+          <div className={`bg-white rounded-xl shadow-lg text-center ${
+            isKioskMode ? 'p-8 sm:p-10' : 'p-4 sm:p-6'
+          }`}>
+            <div className={`font-bold text-green-500 mb-2 ${
+              isKioskMode ? 'text-5xl sm:text-6xl' : 'text-2xl sm:text-3xl'
+            }`}>
               {coins.length}
             </div>
-            <div className="text-gray-600">Total Coins</div>
+            <div className={`text-gray-600 ${
+              isKioskMode ? 'text-xl sm:text-2xl' : 'text-sm sm:text-base'
+            }`}>Total Coins</div>
           </div>
         </div>
 
         {/* Controls */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+        <div className={`bg-white rounded-xl shadow-lg mb-4 sm:mb-6 ${
+          isKioskMode ? 'p-6 sm:p-8' : 'p-4 sm:p-6'
+        }`}>
           <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-            <div className="flex flex-col sm:flex-row gap-4 flex-1">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 flex-1">
               {/* Search */}
               <div className="relative">
                 <input
