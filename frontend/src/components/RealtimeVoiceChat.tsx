@@ -19,7 +19,7 @@ interface ChatMessage {
 
 const RealtimeVoiceChat: React.FC<RealtimeVoiceChatProps> = ({ 
   userId, 
-  apiBaseUrl = 'ws://localhost:8000' 
+  apiBaseUrl = 'ws://46.101.187.24:8000' 
 }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
