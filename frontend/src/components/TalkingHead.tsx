@@ -218,9 +218,6 @@ const TalkingHead: React.FC<TalkingHeadProps> = ({
       {/* Avatar Controls Overlay */}
       {isInitialized && (
         <div className="absolute top-4 right-4 space-y-2">
-          <div className="bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
-            {isPlaying ? '🗣️ Говорит' : '😐 Молчит'}
-          </div>
           {lipSyncData && (
             <div className="bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
               🎭 Lip-sync активен

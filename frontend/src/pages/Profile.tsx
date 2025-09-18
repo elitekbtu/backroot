@@ -6,6 +6,11 @@ const Profile: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isKioskMode, setIsKioskMode] = useState(false);
+
+  const toggleKioskMode = () => {
+    setIsKioskMode(!isKioskMode);
+  };
 
   useEffect(() => {
     loadUserProfile();
@@ -85,13 +90,34 @@ const Profile: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className={`min-h-screen bg-gray-50 py-6 sm:py-8 lg:py-12 ${isKioskMode ? 'text-2xl' : ''}`}>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Kiosk Mode Toggle */}
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={toggleKioskMode}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              isKioskMode 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            } ${isKioskMode ? 'text-xl' : 'text-sm'}`}
+            title={isKioskMode ? 'Exit Kiosk Mode' : 'Enter Kiosk Mode'}
+          >
+            {isKioskMode ? '🖥️ Exit Kiosk' : '📱 Kiosk Mode'}
+          </button>
+        </div>
+
         <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+          <div className={`${isKioskMode ? 'p-6 sm:p-8' : 'px-4 py-5 sm:p-6'}`}>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <h1 className={`font-bold text-gray-900 ${
+                isKioskMode ? 'text-4xl sm:text-5xl' : 'text-2xl sm:text-3xl'
+              }`}>
+                Profile
+              </h1>
+              <span className={`inline-flex items-center rounded-full font-medium ${
+                isKioskMode ? 'px-4 py-2 text-lg' : 'px-2.5 py-0.5 text-xs'
+              } ${
                 user.is_active 
                   ? 'bg-green-100 text-green-800' 
                   : 'bg-red-100 text-red-800'
@@ -100,38 +126,76 @@ const Profile: React.FC = () => {
               </span>
             </div>
 
-            <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div className={`mt-6 sm:mt-8 grid grid-cols-1 gap-4 sm:gap-6 ${
+              isKioskMode ? 'gap-8' : 'gap-4 sm:gap-6'
+            } sm:grid-cols-2`}>
               {/* Basic Information */}
-              <div className="bg-gray-50 px-4 py-5 rounded-lg">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h3>
-                <dl className="space-y-3">
+              <div className={`bg-gray-50 rounded-lg ${
+                isKioskMode ? 'p-6 sm:p-8' : 'px-4 py-5'
+              }`}>
+                <h3 className={`font-medium text-gray-900 mb-4 ${
+                  isKioskMode ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'
+                }`}>
+                  Basic Information
+                </h3>
+                <dl className={`space-y-3 ${
+                  isKioskMode ? 'space-y-4' : 'space-y-3'
+                }`}>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Username</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{user.username}</dd>
+                    <dt className={`font-medium text-gray-500 ${
+                      isKioskMode ? 'text-lg sm:text-xl' : 'text-sm sm:text-base'
+                    }`}>Username</dt>
+                    <dd className={`mt-1 text-gray-900 ${
+                      isKioskMode ? 'text-xl sm:text-2xl' : 'text-sm sm:text-base'
+                    }`}>{user.username}</dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">First Name</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{user.first_name || 'Not provided'}</dd>
+                    <dt className={`font-medium text-gray-500 ${
+                      isKioskMode ? 'text-lg sm:text-xl' : 'text-sm sm:text-base'
+                    }`}>First Name</dt>
+                    <dd className={`mt-1 text-gray-900 ${
+                      isKioskMode ? 'text-xl sm:text-2xl' : 'text-sm sm:text-base'
+                    }`}>{user.first_name || 'Not provided'}</dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Last Name</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{user.last_name || 'Not provided'}</dd>
+                    <dt className={`font-medium text-gray-500 ${
+                      isKioskMode ? 'text-lg sm:text-xl' : 'text-sm sm:text-base'
+                    }`}>Last Name</dt>
+                    <dd className={`mt-1 text-gray-900 ${
+                      isKioskMode ? 'text-xl sm:text-2xl' : 'text-sm sm:text-base'
+                    }`}>{user.last_name || 'Not provided'}</dd>
                   </div>
                 </dl>
               </div>
 
               {/* Account Information */}
-              <div className="bg-gray-50 px-4 py-5 rounded-lg">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Account Information</h3>
-                <dl className="space-y-3">
+              <div className={`bg-gray-50 rounded-lg ${
+                isKioskMode ? 'p-6 sm:p-8' : 'px-4 py-5'
+              }`}>
+                <h3 className={`font-medium text-gray-900 mb-4 ${
+                  isKioskMode ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'
+                }`}>
+                  Account Information
+                </h3>
+                <dl className={`space-y-3 ${
+                  isKioskMode ? 'space-y-4' : 'space-y-3'
+                }`}>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">User ID</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{user.id}</dd>
+                    <dt className={`font-medium text-gray-500 ${
+                      isKioskMode ? 'text-lg sm:text-xl' : 'text-sm sm:text-base'
+                    }`}>User ID</dt>
+                    <dd className={`mt-1 text-gray-900 ${
+                      isKioskMode ? 'text-xl sm:text-2xl' : 'text-sm sm:text-base'
+                    }`}>{user.id}</dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Account Status</dt>
+                    <dt className={`font-medium text-gray-500 ${
+                      isKioskMode ? 'text-lg sm:text-xl' : 'text-sm sm:text-base'
+                    }`}>Account Status</dt>
                     <dd className="mt-1">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      <span className={`inline-flex items-center rounded-full font-medium ${
+                        isKioskMode ? 'px-4 py-2 text-lg' : 'px-2.5 py-0.5 text-xs'
+                      } ${
                         user.is_active 
                           ? 'bg-green-100 text-green-800' 
                           : 'bg-red-100 text-red-800'
@@ -141,12 +205,20 @@ const Profile: React.FC = () => {
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Member Since</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{formatDate(user.created_at)}</dd>
+                    <dt className={`font-medium text-gray-500 ${
+                      isKioskMode ? 'text-lg sm:text-xl' : 'text-sm sm:text-base'
+                    }`}>Member Since</dt>
+                    <dd className={`mt-1 text-gray-900 ${
+                      isKioskMode ? 'text-xl sm:text-2xl' : 'text-sm sm:text-base'
+                    }`}>{formatDate(user.created_at)}</dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Last Updated</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{formatDate(user.updated_at)}</dd>
+                    <dt className={`font-medium text-gray-500 ${
+                      isKioskMode ? 'text-lg sm:text-xl' : 'text-sm sm:text-base'
+                    }`}>Last Updated</dt>
+                    <dd className={`mt-1 text-gray-900 ${
+                      isKioskMode ? 'text-xl sm:text-2xl' : 'text-sm sm:text-base'
+                    }`}>{formatDate(user.updated_at)}</dd>
                   </div>
                 </dl>
               </div>
