@@ -17,6 +17,7 @@
     "@types/google.maps": "^3.58.1",
     "@types/node": "^24.3.1",
     "@types/three": "^0.180.0",
+    "ar.js": "^2.2.0",
     "axios": "^1.11.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

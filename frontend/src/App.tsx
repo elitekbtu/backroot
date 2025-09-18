@@ -10,6 +10,7 @@ import Settings from './pages/Settings';
 import AR from './pages/AR';
 import V2V from './pages/V2V';
 import POICollector from './pages/POICollector';
+import ARTest from './components/ARTest';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 
@@ -61,6 +62,8 @@ const AppRoutes = () => {
         <Route path="profile" element={<Profile />} />
         <Route path="settings" element={<Settings />} />
       </Route>
+
+      <Route path="/ar-test" element={<ARTest />} />
 
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

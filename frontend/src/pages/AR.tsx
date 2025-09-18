@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   getCoins, 
   createCoin, 
@@ -24,6 +24,7 @@ const ARPage: React.FC = () => {
   const [showAR, setShowAR] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingCoin, setEditingCoin] = useState<CoinResponse | null>(null);
+  const [selectedCoin, setSelectedCoin] = useState<CoinResponse | null>(null);
   const [formData, setFormData] = useState<CoinCreate>({
     name: '',
     symbol: '',
@@ -32,13 +33,15 @@ const ARPage: React.FC = () => {
     ar_scale: 1.0,
     ar_position_x: 0,
     ar_position_y: 0,
-    ar_position_z: -5
+    ar_position_z: -2
   });
 
-  // Load coins
-  const loadCoins = async (page: number = 1, search?: string, isActive?: boolean | null) => {
+  // Load coins with error handling
+  const loadCoins = useCallback(async (page: number = 1, search?: string, isActive?: boolean | null) => {
     try {
       setLoading(true);
+      setError(null);
+      
       const response = await getCoins(page, 10, isActive ?? undefined, search);
       if (response.success && response.data) {
         setCoins(response.data.coins);
@@ -53,15 +56,15 @@ const ARPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Initial load
   useEffect(() => {
     loadCoins();
-  }, []);
+  }, [loadCoins]);
 
-  // Handle search
-  const handleSearch = async (query: string) => {
+  // Search handler with debouncing
+  const handleSearch = useCallback(async (query: string) => {
     setSearchQuery(query);
     if (query.trim()) {
       const response = await searchCoins(query, 1, 10);
@@ -73,31 +76,22 @@ const ARPage: React.FC = () => {
     } else {
       loadCoins(1);
     }
-  };
+  }, [loadCoins]);
 
-  // Handle filter
-  const handleFilter = async (isActive: boolean | null) => {
+  // Filter handler
+  const handleFilter = useCallback(async (isActive: boolean | null) => {
     setFilterActive(isActive);
     loadCoins(1, searchQuery, isActive);
-  };
+  }, [loadCoins, searchQuery]);
 
-  // Handle create coin
-  const handleCreateCoin = async (e: React.FormEvent) => {
+  // Create coin handler
+  const handleCreateCoin = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const response = await createCoin(formData);
       if (response.success) {
         setShowCreateForm(false);
-        setFormData({
-          name: '',
-          symbol: '',
-          description: '',
-          ar_model_url: '',
-          ar_scale: 1.0,
-          ar_position_x: 0,
-          ar_position_y: 0,
-          ar_position_z: -5
-        });
+        resetForm();
         loadCoins(currentPage, searchQuery, filterActive);
       } else {
         setError(response.error?.detail || 'Failed to create coin');
@@ -106,10 +100,10 @@ const ARPage: React.FC = () => {
       setError('Failed to create coin');
       console.error('Error creating coin:', err);
     }
-  };
+  }, [formData, currentPage, searchQuery, filterActive, loadCoins]);
 
-  // Handle update coin
-  const handleUpdateCoin = async (e: React.FormEvent) => {
+  // Update coin handler
+  const handleUpdateCoin = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCoin) return;
     
@@ -128,16 +122,7 @@ const ARPage: React.FC = () => {
       const response = await updateCoin(editingCoin.id, updateData);
       if (response.success) {
         setEditingCoin(null);
-        setFormData({
-          name: '',
-          symbol: '',
-          description: '',
-          ar_model_url: '',
-          ar_scale: 1.0,
-          ar_position_x: 0,
-          ar_position_y: 0,
-          ar_position_z: -5
-        });
+        resetForm();
         loadCoins(currentPage, searchQuery, filterActive);
       } else {
         setError(response.error?.detail || 'Failed to update coin');
@@ -146,10 +131,10 @@ const ARPage: React.FC = () => {
       setError('Failed to update coin');
       console.error('Error updating coin:', err);
     }
-  };
+  }, [editingCoin, formData, currentPage, searchQuery, filterActive, loadCoins]);
 
-  // Handle delete coin
-  const handleDeleteCoin = async (coinId: number) => {
+  // Delete coin handler
+  const handleDeleteCoin = useCallback(async (coinId: number) => {
     if (!window.confirm('Are you sure you want to delete this coin?')) return;
     
     try {
@@ -163,10 +148,10 @@ const ARPage: React.FC = () => {
       setError('Failed to delete coin');
       console.error('Error deleting coin:', err);
     }
-  };
+  }, [currentPage, searchQuery, filterActive, loadCoins]);
 
   // Start editing
-  const startEditing = (coin: CoinResponse) => {
+  const startEditing = useCallback((coin: CoinResponse) => {
     setEditingCoin(coin);
     setFormData({
       name: coin.name,
@@ -176,14 +161,12 @@ const ARPage: React.FC = () => {
       ar_scale: coin.ar_scale || 1.0,
       ar_position_x: coin.ar_position_x || 0,
       ar_position_y: coin.ar_position_y || 0,
-      ar_position_z: coin.ar_position_z || -5
+      ar_position_z: coin.ar_position_z || -2
     });
-  };
+  }, []);
 
-  // Cancel editing
-  const cancelEditing = () => {
-    setEditingCoin(null);
-    setShowCreateForm(false);
+  // Reset form
+  const resetForm = useCallback(() => {
     setFormData({
       name: '',
       symbol: '',
@@ -192,37 +175,68 @@ const ARPage: React.FC = () => {
       ar_scale: 1.0,
       ar_position_x: 0,
       ar_position_y: 0,
-      ar_position_z: -5
+      ar_position_z: -2
     });
-  };
+  }, []);
+
+  // Cancel editing
+  const cancelEditing = useCallback(() => {
+    setEditingCoin(null);
+    setShowCreateForm(false);
+    resetForm();
+  }, [resetForm]);
+
+
+  // Close coin details
+  const closeCoinDetails = useCallback(() => {
+    setSelectedCoin(null);
+  }, []);
 
   if (showAR) {
     return (
       <div className="min-h-screen">
-        <div className="absolute top-4 left-4 z-10">
-          <button
-            onClick={() => setShowAR(false)}
-            className="px-4 py-2 bg-black bg-opacity-50 text-white rounded-lg hover:bg-opacity-70 transition-all"
-          >
-            ← Back to Management
-          </button>
-        </div>
-        <AR />
+        <AR onBack={() => setShowAR(false)} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">AR Coin System</h1>
-          <p className="text-gray-600">Manage and experience coins in augmented reality</p>
+        <div className="mb-8 text-center">
+          <h1 className="text-5xl font-bold text-gray-900 mb-4">
+            🥽 AR Coin System
+          </h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Create, manage, and experience cryptocurrency coins in augmented reality
+          </p>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-lg p-6 text-center">
+            <div className="text-3xl font-bold text-yellow-500 mb-2">
+              {coins.filter(coin => coin.is_active).length}
+            </div>
+            <div className="text-gray-600">Active Coins</div>
+          </div>
+          <div className="bg-white rounded-xl shadow-lg p-6 text-center">
+            <div className="text-3xl font-bold text-blue-500 mb-2">
+              {coins.filter(coin => coin.ar_model_url).length}
+            </div>
+            <div className="text-gray-600">AR Ready</div>
+          </div>
+          <div className="bg-white rounded-xl shadow-lg p-6 text-center">
+            <div className="text-3xl font-bold text-green-500 mb-2">
+              {coins.length}
+            </div>
+            <div className="text-gray-600">Total Coins</div>
+          </div>
         </div>
 
         {/* Controls */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
           <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
             <div className="flex flex-col sm:flex-row gap-4 flex-1">
               {/* Search */}
@@ -232,9 +246,9 @@ const ARPage: React.FC = () => {
                   placeholder="Search coins..."
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                  className="pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent w-full sm:w-64"
                 />
-                <div className="absolute left-3 top-2.5 text-gray-400">
+                <div className="absolute left-3 top-3.5 text-gray-400">
                   🔍
                 </div>
               </div>
@@ -246,7 +260,7 @@ const ARPage: React.FC = () => {
                   const value = e.target.value;
                   handleFilter(value === 'all' ? null : value === 'true');
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
               >
                 <option value="all">All Coins</option>
                 <option value="true">Active Only</option>
@@ -254,16 +268,16 @@ const ARPage: React.FC = () => {
               </select>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <button
                 onClick={() => setShowCreateForm(true)}
-                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-semibold"
               >
                 + Add Coin
               </button>
               <button
                 onClick={() => setShowAR(true)}
-                className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+                className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all font-semibold shadow-lg"
               >
                 🥽 Launch AR
               </button>
@@ -273,65 +287,66 @@ const ARPage: React.FC = () => {
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-            {error}
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-center justify-between">
+            <span>{error}</span>
             <button
               onClick={() => setError(null)}
-              className="float-right text-red-500 hover:text-red-700"
+              className="text-red-500 hover:text-red-700 font-bold text-xl"
             >
-              ✕
+              ×
             </button>
           </div>
         )}
 
         {/* Create/Edit Form */}
         {(showCreateForm || editingCoin) && (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4">
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <h2 className="text-2xl font-semibold mb-6">
               {editingCoin ? 'Edit Coin' : 'Create New Coin'}
             </h2>
-            <form onSubmit={editingCoin ? handleUpdateCoin : handleCreateCoin} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={editingCoin ? handleUpdateCoin : handleCreateCoin} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Symbol</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Symbol</label>
                   <input
                     type="text"
                     value={formData.symbol}
                     onChange={(e) => setFormData({...formData, symbol: e.target.value.toUpperCase()})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                     required
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                     rows={3}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">AR Model URL</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">AR Model URL</label>
                   <input
                     type="url"
                     value={formData.ar_model_url}
                     onChange={(e) => setFormData({...formData, ar_model_url: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                    placeholder="https://example.com/model.glb"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">AR Scale</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">AR Scale</label>
                   <input
                     type="number"
                     step="0.1"
@@ -339,51 +354,51 @@ const ARPage: React.FC = () => {
                     max="10"
                     value={formData.ar_scale}
                     onChange={(e) => setFormData({...formData, ar_scale: parseFloat(e.target.value)})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">X Position</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">X Position</label>
                   <input
                     type="number"
                     step="0.1"
                     value={formData.ar_position_x}
                     onChange={(e) => setFormData({...formData, ar_position_x: parseFloat(e.target.value)})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Y Position</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Y Position</label>
                   <input
                     type="number"
                     step="0.1"
                     value={formData.ar_position_y}
                     onChange={(e) => setFormData({...formData, ar_position_y: parseFloat(e.target.value)})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Z Position</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Z Position</label>
                   <input
                     type="number"
                     step="0.1"
                     value={formData.ar_position_z}
                     onChange={(e) => setFormData({...formData, ar_position_z: parseFloat(e.target.value)})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                   />
                 </div>
               </div>
-              <div className="flex gap-2 pt-4">
+              <div className="flex gap-3 pt-4">
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+                  className="px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-semibold"
                 >
                   {editingCoin ? 'Update Coin' : 'Create Coin'}
                 </button>
                 <button
                   type="button"
                   onClick={cancelEditing}
-                  className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                  className="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-semibold"
                 >
                   Cancel
                 </button>
@@ -393,20 +408,21 @@ const ARPage: React.FC = () => {
         )}
 
         {/* Coins List */}
-        <div className="bg-white rounded-lg shadow-md">
+        <div className="bg-white rounded-xl shadow-lg">
           <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold">Coins ({coins.length})</h2>
+            <h2 className="text-2xl font-semibold">Coins ({coins.length})</h2>
           </div>
           
           {loading ? (
-            <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading coins...</p>
+            <div className="p-12 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto mb-4"></div>
+              <p className="text-gray-600 text-lg">Loading coins...</p>
             </div>
           ) : coins.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
-              <div className="text-6xl mb-4">🪙</div>
-              <p>No coins found</p>
+            <div className="p-12 text-center text-gray-500">
+              <div className="text-8xl mb-6">🪙</div>
+              <h3 className="text-2xl font-semibold mb-2">No coins found</h3>
+              <p className="text-lg">Create your first coin to get started</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
@@ -414,20 +430,20 @@ const ARPage: React.FC = () => {
                 <div key={coin.id} className="p-6 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center">
-                        <span className="text-white font-bold text-sm">{coin.symbol}</span>
+                      <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center shadow-lg">
+                        <span className="text-white font-bold text-lg">{coin.symbol}</span>
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">{coin.name}</h3>
-                        <p className="text-sm text-gray-600">{coin.description || 'No description'}</p>
-                        <div className="flex items-center space-x-4 mt-1">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
+                        <h3 className="text-xl font-semibold text-gray-900">{coin.name}</h3>
+                        <p className="text-gray-600">{coin.description || 'No description'}</p>
+                        <div className="flex items-center space-x-3 mt-2">
+                          <span className={`px-3 py-1 text-sm rounded-full font-medium ${
                             coin.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                           }`}>
                             {coin.is_active ? 'Active' : 'Inactive'}
                           </span>
                           {coin.ar_model_url && (
-                            <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                            <span className="px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-full font-medium">
                               AR Ready
                             </span>
                           )}
@@ -437,30 +453,42 @@ const ARPage: React.FC = () => {
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => startEditing(coin)}
-                        className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                        className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDeleteCoin(coin.id)}
-                        className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                        className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
                       >
                         Delete
                       </button>
                     </div>
                   </div>
                   {coin.ar_model_url && (
-                    <div className="mt-3 text-sm text-gray-600">
-                      <p><strong>AR Scale:</strong> {coin.ar_scale}x</p>
-                      <p><strong>Position:</strong> ({coin.ar_position_x}, {coin.ar_position_y}, {coin.ar_position_z})</p>
-                      <a
-                        href={coin.ar_model_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 underline"
-                      >
-                        View 3D Model →
-                      </a>
+                    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-700">AR Scale:</span>
+                          <span className="ml-2 text-gray-600">{coin.ar_scale}x</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Position:</span>
+                          <span className="ml-2 text-gray-600">
+                            ({coin.ar_position_x}, {coin.ar_position_y}, {coin.ar_position_z})
+                          </span>
+                        </div>
+                        <div className="md:col-span-2">
+                          <a
+                            href={coin.ar_model_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 underline font-medium"
+                          >
+                            View 3D Model →
+                          </a>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -479,14 +507,14 @@ const ARPage: React.FC = () => {
                   <button
                     onClick={() => loadCoins(currentPage - 1, searchQuery, filterActive)}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                   >
                     Previous
                   </button>
                   <button
                     onClick={() => loadCoins(currentPage + 1, searchQuery, filterActive)}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                   >
                     Next
                   </button>
@@ -496,6 +524,51 @@ const ARPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Coin Details Modal */}
+      {selectedCoin && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-2xl font-bold">{selectedCoin.name}</h3>
+              <button
+                onClick={closeCoinDetails}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="text-center">
+                <div className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-white font-bold text-2xl">{selectedCoin.symbol}</span>
+                </div>
+                <p className="text-gray-600">{selectedCoin.description}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium">Status:</span>
+                  <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
+                    selectedCoin.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {selectedCoin.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-medium">AR Scale:</span>
+                  <span className="ml-2">{selectedCoin.ar_scale}x</span>
+                </div>
+              </div>
+              <button
+                onClick={closeCoinDetails}
+                className="w-full px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
