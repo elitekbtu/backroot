@@ -11,7 +11,7 @@ import type {
   CoinCreate,
   CoinUpdate
 } from '../types/coin';
-import AR from '../components/AR';
+import UniversalAR from '../components/UniversalAR';
 
 const ARPage: React.FC = () => {
   const [coins, setCoins] = useState<CoinResponse[]>([]);
@@ -195,7 +195,7 @@ const ARPage: React.FC = () => {
   if (showAR) {
     return (
       <div className="min-h-screen">
-        <AR onBack={() => setShowAR(false)} />
+        <UniversalAR onBack={() => setShowAR(false)} />
       </div>
     );
   }

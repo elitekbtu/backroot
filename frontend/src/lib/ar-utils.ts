@@ -15,6 +15,24 @@ export const isARSupported = (): Promise<boolean> => {
   });
 };
 
+// Check if device is mobile
+export const isMobileDevice = (): boolean => {
+  const userAgent = navigator.userAgent;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+};
+
+// Check if device is iOS
+export const isIOSDevice = (): boolean => {
+  const userAgent = navigator.userAgent;
+  return /iPad|iPhone|iPod/.test(userAgent);
+};
+
+// Check if device is Android
+export const isAndroidDevice = (): boolean => {
+  const userAgent = navigator.userAgent;
+  return /Android/.test(userAgent);
+};
+
 // Check if device has camera access
 export const hasCameraAccess = async (): Promise<boolean> => {
   try {
@@ -33,10 +51,18 @@ export const getARCapabilities = async () => {
     hasCameraAccess()
   ]);
 
+  const isMobile = isMobileDevice();
+  const isIOS = isIOSDevice();
+  const isAndroid = isAndroidDevice();
+
   return {
     arSupported,
     cameraAccess,
-    canRunAR: arSupported && cameraAccess
+    canRunAR: arSupported && cameraAccess,
+    isMobile,
+    isIOS,
+    isAndroid,
+    deviceType: isMobile ? 'mobile' : 'desktop'
   };
 };
 

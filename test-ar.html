@@ -107,21 +107,30 @@
         // Display device information
         function displayDeviceInfo() {
             const deviceInfo = document.getElementById('device-info');
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            const isAndroid = /Android/.test(navigator.userAgent);
+            const isChrome = /Chrome/.test(navigator.userAgent);
+            const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+            
             deviceInfo.innerHTML = `
-                <div class="status ${navigator.userAgent.includes('Mobile') ? 'success' : 'warning'}">
-                    Mobile Device: ${navigator.userAgent.includes('Mobile') ? 'Yes' : 'No'}
+                <div class="status ${isMobile ? 'success' : 'warning'}">
+                    📱 Mobile Device: ${isMobile ? 'Yes' : 'No'}
                 </div>
-                <div class="status ${navigator.userAgent.includes('Android') ? 'success' : 'warning'}">
-                    Android: ${navigator.userAgent.includes('Android') ? 'Yes' : 'No'}
+                <div class="status ${isAndroid ? 'success' : 'warning'}">
+                    🤖 Android: ${isAndroid ? 'Yes' : 'No'}
                 </div>
-                <div class="status ${navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad') ? 'success' : 'warning'}">
-                    iOS: ${navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad') ? 'Yes' : 'No'}
+                <div class="status ${isIOS ? 'success' : 'warning'}">
+                    🍎 iOS: ${isIOS ? 'Yes' : 'No'}
                 </div>
-                <div class="status ${navigator.userAgent.includes('Chrome') ? 'success' : 'warning'}">
-                    Chrome: ${navigator.userAgent.includes('Chrome') ? 'Yes' : 'No'}
+                <div class="status ${isChrome ? 'success' : 'warning'}">
+                    🌐 Chrome: ${isChrome ? 'Yes' : 'No'}
                 </div>
-                <div class="status ${navigator.userAgent.includes('Safari') ? 'success' : 'warning'}">
-                    Safari: ${navigator.userAgent.includes('Safari') ? 'Yes' : 'No'}
+                <div class="status ${isSafari ? 'success' : 'warning'}">
+                    🦁 Safari: ${isSafari ? 'Yes' : 'No'}
+                </div>
+                <div class="status ${isMobile ? 'success' : 'warning'}">
+                    💻 Desktop: ${!isMobile ? 'Yes' : 'No'}
                 </div>
                 <p><strong>User Agent:</strong> ${navigator.userAgent}</p>
             `;

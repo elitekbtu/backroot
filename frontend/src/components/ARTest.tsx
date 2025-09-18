@@ -6,6 +6,10 @@ const ARTest: React.FC = () => {
     arSupported: boolean;
     cameraAccess: boolean;
     canRunAR: boolean;
+    isMobile: boolean;
+    isIOS: boolean;
+    isAndroid: boolean;
+    deviceType: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -45,6 +49,30 @@ const ARTest: React.FC = () => {
             <h2 className="text-2xl font-semibold mb-4">Device Capabilities</h2>
             
             <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <span className="font-medium">Device Type:</span>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  capabilities?.isMobile 
+                    ? 'bg-blue-100 text-blue-800' 
+                    : 'bg-purple-100 text-purple-800'
+                }`}>
+                  {capabilities?.deviceType === 'mobile' ? '📱 Mobile' : '💻 Desktop'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <span className="font-medium">Platform:</span>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  capabilities?.isIOS 
+                    ? 'bg-gray-100 text-gray-800' 
+                    : capabilities?.isAndroid
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-blue-100 text-blue-800'
+                }`}>
+                  {capabilities?.isIOS ? '🍎 iOS' : capabilities?.isAndroid ? '🤖 Android' : '🖥️ Desktop'}
+                </span>
+              </div>
+              
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <span className="font-medium">WebXR AR Support:</span>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${

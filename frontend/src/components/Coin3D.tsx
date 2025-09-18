@@ -59,8 +59,9 @@ export const Coin3D: React.FC<Coin3DProps> = React.memo(({ coin, position, onCli
   useFrame((state, delta) => {
     if (!meshRef.current) return;
     
-    // Smooth rotation
-    meshRef.current.rotation.y += delta * 0.3;
+    // Smooth rotation - slower on mobile for better performance
+    const rotationSpeed = window.innerWidth < 768 ? 0.1 : 0.3;
+    meshRef.current.rotation.y += delta * rotationSpeed;
     
     // Hover scaling with smooth interpolation
     const targetScale = hovered ? 1.2 : (coin.ar_scale || 1);
@@ -74,7 +75,7 @@ export const Coin3D: React.FC<Coin3DProps> = React.memo(({ coin, position, onCli
       meshRef.current.scale.setScalar(newScale * clickScale);
     }
     
-    // Glow animation only when hovered
+    // Glow animation only when hovered - reduced on mobile
     if (glowRef.current && hovered) {
       glowRef.current.rotation.y -= delta * 0.2;
       const pulse = Math.sin(state.clock.elapsedTime * 3) * 0.1 + 0.9;
