@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import type { LocationContext } from './location';
 
 // Simplified types for V2V service
 export interface VoiceServiceStatus {
@@ -21,6 +22,7 @@ export interface ConversationEntry {
   user_input: string;
   ai_response: string;
   type: 'voice' | 'text';
+  location_context?: LocationContext;
 }
 
 export interface VoiceResponseMessage {
@@ -29,6 +31,7 @@ export interface VoiceResponseMessage {
   ai_response: string;
   audio_response: string;
   timestamp: string;
+  location_context?: LocationContext;
 }
 
 export type WebSocketState = 'connecting' | 'connected' | 'disconnected' | 'error';
@@ -52,6 +55,7 @@ export class V2VService {
   private onProcessingStatus: ((status: { status: string; message: string }) => void) | null = null;
   private onError: ((error: { message: string }) => void) | null = null;
   private onConversationHistory: ((response: { history: ConversationEntry[] }) => void) | null = null;
+  private onLocationUpdate: ((location: LocationContext) => void) | null = null;
 
   // Getters
   get connectionState(): WebSocketState {
@@ -89,6 +93,10 @@ export class V2VService {
 
   setOnConversationHistory(handler: (response: { history: ConversationEntry[] }) => void) {
     this.onConversationHistory = handler;
+  }
+
+  setOnLocationUpdate(handler: (location: LocationContext) => void) {
+    this.onLocationUpdate = handler;
   }
 
   // REST API Methods
@@ -198,6 +206,9 @@ export class V2VService {
           break;
         case 'conversation_history':
           this.onConversationHistory?.(message);
+          break;
+        case 'location_context':
+          this.onLocationUpdate?.(message.location_context);
           break;
         case 'error':
           this.onError?.({ message: message.message });
@@ -343,10 +354,20 @@ export class V2VService {
   }
 
   // Send text input
-  sendTextInput(text: string): boolean {
+  sendTextInput(text: string, locationContext?: LocationContext): boolean {
     const message = {
       type: 'text_input',
-      text: text
+      text: text,
+      location_context: locationContext
+    };
+    return this.sendMessage(message);
+  }
+
+  // Send location context to AI
+  sendLocationContext(locationContext: LocationContext): boolean {
+    const message = {
+      type: 'location_context',
+      location_context: locationContext
     };
     return this.sendMessage(message);
   }

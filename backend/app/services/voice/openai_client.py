@@ -19,7 +19,7 @@ class OpenAIClient:
         self.tts_model = settings.OPENAI_TTS_MODEL
         self.stt_model = settings.OPENAI_STT_MODEL
     
-    async def generate_response(self, user_input: str, user_id: str, user_sessions: Dict) -> str:
+    async def generate_response(self, user_input: str, user_id: str, user_sessions: Dict, custom_system_prompt: str = None) -> str:
         """Generate AI response using OpenAI GPT model."""
         try:
             # Get conversation context
@@ -27,10 +27,12 @@ class OpenAIClient:
             conversation_history = session.get("conversation_history", [])
             
             # Build conversation context
+            system_prompt = custom_system_prompt or "You are a helpful AI assistant. Respond naturally and conversationally. Keep responses concise but helpful."
+            
             messages = [
                 {
                     "role": "system",
-                    "content": "You are a helpful AI assistant. Respond naturally and conversationally. Keep responses concise but helpful."
+                    "content": system_prompt
                 }
             ]
             

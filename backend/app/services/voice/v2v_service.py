@@ -5,6 +5,7 @@ from datetime import datetime
 from fastapi import WebSocket
 
 from app.core.config import get_settings
+from app.api.v1.endpoints.location.schema import LocationContext
 from .openai_client import OpenAIClient
 from .groq_client import GroqClient
 from .audio_processor import AudioProcessor
@@ -30,7 +31,8 @@ class V2VWebSocketService:
             self.user_sessions[user_id] = {
                 "connected_at": datetime.utcnow(),
                 "conversation_history": [],
-                "is_processing": False
+                "is_processing": False,
+                "location_context": None
             }
             
             await websocket.send_text(json.dumps({
@@ -78,6 +80,8 @@ class V2VWebSocketService:
                 await self.clear_conversation_history(websocket, user_id)
             elif message_type == "get_lip_sync_data":
                 await self.send_lip_sync_data(websocket, user_id, data)
+            elif message_type == "location_context":
+                await self.update_location_context(websocket, user_id, data)
             else:
                 await websocket.send_text(json.dumps({
                     "type": "error",
@@ -127,10 +131,17 @@ class V2VWebSocketService:
             
             # Generate AI response using Groq LLM with OpenAI fallback
             try:
-                ai_response = await self.groq_client.generate_response(transcript, user_id, self.user_sessions)
+                system_prompt = self._get_location_aware_prompt(user_id)
+                ai_response = await self.groq_client.generate_response(transcript, user_id, self.user_sessions, system_prompt)
             except Exception as groq_error:
                 logger.warning(f"Groq failed, falling back to OpenAI: {groq_error}")
-                ai_response = await self.openai_client.generate_response(transcript, user_id, self.user_sessions)
+                try:
+                    system_prompt = self._get_location_aware_prompt(user_id)
+                    ai_response = await self.openai_client.generate_response(transcript, user_id, self.user_sessions, system_prompt)
+                except Exception as openai_error:
+                    logger.error(f"Both Groq and OpenAI failed: {openai_error}")
+                    # Fallback to basic prompt without location context
+                    ai_response = await self.openai_client.generate_response(transcript, user_id, self.user_sessions)
             
             # Convert AI response to speech
             audio_response = await self.openai_client.text_to_speech(ai_response)
@@ -188,17 +199,30 @@ class V2VWebSocketService:
                 "message": "Processing text input..."
             }))
             
-            # Extract text
+            # Extract text and location context
             text_input = data.get("text")
+            location_context = data.get("location_context")
+            
             if not text_input:
                 raise ValueError("No text provided")
             
+            # Update location context if provided
+            if location_context:
+                self.user_sessions[user_id]["location_context"] = location_context
+            
             # Generate AI response using Groq LLM with OpenAI fallback
             try:
-                ai_response = await self.groq_client.generate_response(text_input, user_id, self.user_sessions)
+                system_prompt = self._get_location_aware_prompt(user_id)
+                ai_response = await self.groq_client.generate_response(text_input, user_id, self.user_sessions, system_prompt)
             except Exception as groq_error:
                 logger.warning(f"Groq failed, falling back to OpenAI: {groq_error}")
-                ai_response = await self.openai_client.generate_response(text_input, user_id, self.user_sessions)
+                try:
+                    system_prompt = self._get_location_aware_prompt(user_id)
+                    ai_response = await self.openai_client.generate_response(text_input, user_id, self.user_sessions, system_prompt)
+                except Exception as openai_error:
+                    logger.error(f"Both Groq and OpenAI failed: {openai_error}")
+                    # Fallback to basic prompt without location context
+                    ai_response = await self.openai_client.generate_response(text_input, user_id, self.user_sessions)
             
             # Convert AI response to speech
             audio_response = await self.openai_client.text_to_speech(ai_response)
@@ -506,6 +530,109 @@ class V2VWebSocketService:
                 "stt_model": False,
                 "error": str(e)
             }
+
+    async def update_location_context(self, websocket: WebSocket, user_id: str, data: Dict):
+        """Update user's location context."""
+        try:
+            location_data = data.get("location_context")
+            if location_data:
+                # Store location context in user session
+                self.user_sessions[user_id]["location_context"] = location_data
+                
+                await websocket.send_text(json.dumps({
+                    "type": "location_context",
+                    "location_context": location_data,
+                    "message": "Location context updated successfully"
+                }))
+                
+                logger.info(f"Updated location context for user {user_id}: {location_data.get('city', {}).get('name', 'Unknown')}")
+            else:
+                await websocket.send_text(json.dumps({
+                    "type": "error",
+                    "message": "No location context provided"
+                }))
+                
+        except Exception as e:
+            logger.error(f"Error updating location context for user {user_id}: {e}")
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "message": f"Failed to update location context: {str(e)}"
+            }))
+
+    def _get_location_aware_prompt(self, user_id: str) -> str:
+        """Generate location-aware system prompt for AI."""
+        base_prompt = """You are a helpful AI assistant with voice-to-voice capabilities. You can speak naturally and have realistic lip-sync animations. You are designed to be conversational, helpful, and engaging.
+
+Key capabilities:
+- Voice-to-voice conversation with natural speech
+- Realistic lip-sync animations that match your speech
+- Context-aware responses based on conversation history
+- Natural, conversational tone suitable for voice interaction
+
+Guidelines:
+- Keep responses concise and natural for voice delivery
+- Use appropriate pauses and emphasis
+- Be helpful and engaging
+- Ask follow-up questions when appropriate
+- Maintain context throughout the conversation"""
+
+        # Add location context if available
+        if user_id in self.user_sessions:
+            location_context = self.user_sessions[user_id].get("location_context")
+            if location_context:
+                logger.info(f"Location context for user {user_id}: {type(location_context)} - {location_context}")
+                city_name = location_context.get("city", {}).get("name", "your location")
+                country = location_context.get("city", {}).get("country", "")
+                timezone = location_context.get("timezone", "")
+                local_time = location_context.get("local_time", "")
+                
+                location_prompt = f"""
+
+LOCATION CONTEXT:
+You are currently in {city_name}{f', {country}' if country else ''}. The local time is {local_time} ({timezone}).
+
+As a local guide, you can help with:
+- Recommendations for places to visit, eat, and activities
+- Directions and transportation options
+- Local customs, culture, and tips
+- Weather and seasonal information
+- Historical and cultural insights about the area
+- Shopping, entertainment, and dining suggestions
+
+When users ask about:
+- "What to do here" or "places to visit" - suggest local attractions and activities
+- "Where to eat" - recommend local restaurants and food experiences
+- "How to get around" - provide transportation options and directions
+- "Weather" - give current conditions and forecasts
+- "Local tips" - share cultural insights and practical advice
+
+Always be specific to {city_name} and provide practical, actionable advice. If you don't know something specific about the location, be honest but still try to be helpful with general travel advice."""
+
+                # Add attractions if available
+                attractions = location_context.get("attractions", [])
+                if attractions and isinstance(attractions, list) and len(attractions) > 0:
+                    attraction_list = "\n".join([f"- {att['name']}: {att['description']}" for att in attractions[:5]])
+                    location_prompt += f"""
+
+POPULAR LOCAL ATTRACTIONS:
+{attraction_list}
+
+Use these attractions in your recommendations when appropriate."""
+
+                # Add transportation if available
+                transportation = location_context.get("transportation", [])
+                if transportation and isinstance(transportation, list) and len(transportation) > 0:
+                    transport_list = "\n".join([f"- {trans['name']}: {trans['description']} ({trans['estimated_time']}, {trans.get('estimated_cost', 'Cost varies')})" for trans in transportation[:3]])
+                    location_prompt += f"""
+
+TRANSPORTATION OPTIONS:
+{transport_list}
+
+Use this information when helping with directions and getting around."""
+
+                base_prompt += location_prompt
+
+        return base_prompt
 
 
 # Global instance

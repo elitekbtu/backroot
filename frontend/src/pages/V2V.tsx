@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { v2vService } from '../api/v2v';
+import { locationService } from '../api/location';
 import { useAuth } from '../context/AuthContext';
 import TalkingHead from '../components/TalkingHead';
 import type { 
@@ -11,6 +12,13 @@ import type {
   ModelTestResults
 } from '../api/v2v';
 import type { AvatarConfig, LipSyncData, VisemeData } from '../types/v2v';
+import type { 
+  LocationContext, 
+  GeolocationError,
+  LocationPermissionState,
+  LocationUIState,
+  LocationSettings
+} from '../types/location';
 
 const V2V: React.FC = () => {
   const { user } = useAuth();
@@ -30,6 +38,28 @@ const V2V: React.FC = () => {
   const [currentLipSyncData, setCurrentLipSyncData] = useState<LipSyncData | null>(null);
   const [avatarMood, setAvatarMood] = useState<string>('neutral');
   
+  // Location-related state
+  const [locationContext, setLocationContext] = useState<LocationContext | null>(null);
+  const [locationPermission, setLocationPermission] = useState<LocationPermissionState>({
+    status: 'unknown',
+    canRequest: true,
+    message: 'Checking location permission...'
+  });
+  const [locationUI, setLocationUI] = useState<LocationUIState>({
+    isRequesting: false,
+    isWatching: false,
+    lastUpdate: null,
+    error: null,
+    showLocationInfo: false
+  });
+  const [locationSettings] = useState<LocationSettings>({
+    enableHighAccuracy: true,
+    timeout: 10000,
+    maximumAge: 300000,
+    watchLocation: false,
+    autoUpdateContext: true
+  });
+  
   // Memoized lip sync data to prevent unnecessary re-renders
   const memoizedLipSyncData = useMemo(() => {
     if (!currentLipSyncData) return null;
@@ -48,6 +78,149 @@ const V2V: React.FC = () => {
   }), []);
   
   const userId = user?.id?.toString() || 'anonymous';
+
+  // Location functions
+  const requestLocationPermission = useCallback(async () => {
+    setLocationUI(prev => ({ ...prev, isRequesting: true, error: null }));
+    
+    try {
+      const location = await locationService.getCurrentLocation({
+        enableHighAccuracy: locationSettings.enableHighAccuracy,
+        timeout: locationSettings.timeout,
+        maximumAge: locationSettings.maximumAge
+      });
+      
+      setLocationPermission({
+        status: 'granted',
+        canRequest: false,
+        message: 'Location access granted'
+      });
+      
+      // Get full location context
+      const context = await locationService.getLocationContext(location);
+      setLocationContext(context);
+      
+      // Send location context to AI
+      v2vService.sendLocationContext(context);
+      
+      setLocationUI(prev => ({
+        ...prev,
+        isRequesting: false,
+        lastUpdate: new Date(),
+        error: null
+      }));
+      
+      return true;
+    } catch (error) {
+      const geolocationError = error as GeolocationError;
+      console.error('Location request failed:', geolocationError);
+      
+      let permissionStatus: LocationPermissionState['status'] = 'denied';
+      let message = 'Location access denied';
+      
+      switch (geolocationError.type) {
+        case 'permission_denied':
+          permissionStatus = 'denied';
+          message = 'Location access denied. Please enable location permissions in your browser settings.';
+          break;
+        case 'position_unavailable':
+          permissionStatus = 'denied';
+          message = 'Location unavailable. Please check your GPS settings.';
+          break;
+        case 'timeout':
+          permissionStatus = 'denied';
+          message = 'Location request timed out. Please try again.';
+          break;
+        default:
+          permissionStatus = 'denied';
+          message = 'Failed to get location. Please try again.';
+      }
+      
+      setLocationPermission({
+        status: permissionStatus,
+        canRequest: true,
+        message
+      });
+      
+      setLocationUI(prev => ({
+        ...prev,
+        isRequesting: false,
+        error: message
+      }));
+      
+      // Create fallback location context for AI
+      try {
+        const fallbackContext = await locationService.getLocationContext({
+          latitude: 0,
+          longitude: 0,
+          accuracy: 0,
+          timestamp: Date.now()
+        });
+        setLocationContext(fallbackContext);
+        v2vService.sendLocationContext(fallbackContext);
+      } catch (fallbackError) {
+        console.warn('Failed to create fallback location context:', fallbackError);
+      }
+      
+      return false;
+    }
+  }, [locationSettings]);
+
+  const startLocationWatching = useCallback(() => {
+    if (locationUI.isWatching) return;
+    
+    setLocationUI(prev => ({ ...prev, isWatching: true, error: null }));
+    
+    const watchId = locationService.watchLocation(
+      async (location) => {
+        setLocationUI(prev => ({
+          ...prev,
+          lastUpdate: new Date(),
+          error: null
+        }));
+        
+        if (locationSettings.autoUpdateContext) {
+          try {
+            const context = await locationService.getLocationContext(location);
+            setLocationContext(context);
+            v2vService.sendLocationContext(context);
+          } catch (error) {
+            console.error('Failed to update location context:', error);
+          }
+        }
+      },
+      (error) => {
+        console.error('Location watch error:', error);
+        setLocationUI(prev => ({
+          ...prev,
+          isWatching: false,
+          error: error.message
+        }));
+      },
+      {
+        enableHighAccuracy: locationSettings.enableHighAccuracy,
+        timeout: locationSettings.timeout,
+        maximumAge: locationSettings.maximumAge
+      }
+    );
+    
+    if (watchId === -1) {
+      setLocationUI(prev => ({
+        ...prev,
+        isWatching: false,
+        error: 'Location watching not supported'
+      }));
+    }
+  }, [locationSettings, locationUI.isWatching]);
+
+  const stopLocationWatching = useCallback(() => {
+    locationService.stopWatchingLocation();
+    setLocationUI(prev => ({ ...prev, isWatching: false }));
+  }, []);
+
+  const toggleLocationInfo = useCallback(() => {
+    setLocationUI(prev => ({ ...prev, showLocationInfo: !prev.showLocationInfo }));
+  }, []);
 
 
   // Convert text to phonemes (simplified)
@@ -252,12 +425,13 @@ const V2V: React.FC = () => {
         v2vService.setOnVoiceResponse((response: VoiceResponseMessage) => {
           console.log('Voice response received:', response);
           
-          // Add to conversation history
+          // Add to conversation history with location context
           setConversationHistory(prev => [...prev, {
             timestamp: response.timestamp,
             user_input: response.transcript,
             ai_response: response.ai_response,
-            type: 'voice'
+            type: 'voice',
+            location_context: response.location_context || locationContext || undefined
           }]);
 
           // Set avatar mood based on response content (simple sentiment analysis)
@@ -295,6 +469,11 @@ const V2V: React.FC = () => {
           setConversationHistory(response.history);
         });
 
+        v2vService.setOnLocationUpdate((context) => {
+          console.log('Location context updated:', context);
+          setLocationContext(context);
+        });
+
         // Get service status
         const statusResponse = await v2vService.getServiceStatus();
         if (statusResponse.success && statusResponse.data) {
@@ -314,6 +493,14 @@ const V2V: React.FC = () => {
         if (connected) {
           console.log('Successfully connected to V2V service');
           setIsInitialized(true);
+          
+          // Request location permission after successful connection
+          try {
+            await requestLocationPermission();
+          } catch (error) {
+            console.warn('Failed to get location on initialization:', error);
+            // Don't show error to user on initialization, just log it
+          }
         } else {
           throw new Error('Failed to connect to V2V service');
         }
@@ -367,8 +554,16 @@ const V2V: React.FC = () => {
 
   const handleTextSubmit = () => {
     if (textInput.trim()) {
-      const success = v2vService.sendTextInput(textInput.trim());
+      const success = v2vService.sendTextInput(textInput.trim(), locationContext || undefined);
       if (success) {
+        // Add to conversation history immediately
+        setConversationHistory(prev => [...prev, {
+          timestamp: new Date().toISOString(),
+          user_input: textInput.trim(),
+          ai_response: '',
+          type: 'text',
+          location_context: locationContext || undefined
+        }]);
         setTextInput('');
         setError(null);
       } else {
@@ -451,6 +646,116 @@ const V2V: React.FC = () => {
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Voice to Voice AI</h1>
           <p className="text-gray-600">Общайтесь с ИИ через голос в реальном времени</p>
+        </div>
+
+        {/* Location Status */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Местоположение</h2>
+            <div className="flex space-x-2">
+              <button
+                onClick={toggleLocationInfo}
+                className="px-3 py-1 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                {locationUI.showLocationInfo ? 'Скрыть' : 'Показать'} детали
+              </button>
+              {locationPermission.status === 'denied' && locationPermission.canRequest && (
+                <button
+                  onClick={requestLocationPermission}
+                  disabled={locationUI.isRequesting}
+                  className="px-3 py-1 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
+                >
+                  {locationUI.isRequesting ? 'Запрос...' : 'Разрешить'}
+                </button>
+              )}
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center space-x-3">
+              <span className="text-2xl">
+                {locationPermission.status === 'granted' ? '📍' : 
+                 locationPermission.status === 'denied' ? '🚫' : '❓'}
+              </span>
+              <div>
+                <div className={`font-medium ${
+                  locationPermission.status === 'granted' ? 'text-green-600' :
+                  locationPermission.status === 'denied' ? 'text-red-600' : 'text-yellow-600'
+                }`}>
+                  {locationContext ? locationContext.city.name : 'Местоположение неизвестно'}
+                </div>
+                <div className="text-sm text-gray-600">
+                  {locationContext ? `${locationContext.city.country}` : locationPermission.message}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <span className="text-2xl">
+                {locationUI.isWatching ? '👁️' : '👁️‍🗨️'}
+              </span>
+              <div>
+                <div className="font-medium text-gray-700">
+                  {locationUI.isWatching ? 'Отслеживание активно' : 'Отслеживание отключено'}
+                </div>
+                <div className="text-sm text-gray-600">
+                  {locationUI.lastUpdate ? 
+                    `Обновлено: ${locationUI.lastUpdate.toLocaleTimeString()}` : 
+                    'Нет данных'
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {locationUI.showLocationInfo && locationContext && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+              <h3 className="font-semibold mb-3">Информация о городе</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <strong>Город:</strong> {locationContext.city.name}
+                </div>
+                <div>
+                  <strong>Страна:</strong> {locationContext.city.country}
+                </div>
+                <div>
+                  <strong>Часовой пояс:</strong> {locationContext.timezone}
+                </div>
+                <div>
+                  <strong>Местное время:</strong> {locationContext.localTime}
+                </div>
+                <div>
+                  <strong>Координаты:</strong> {locationContext.city.coordinates.lat.toFixed(4)}, {locationContext.city.coordinates.lon.toFixed(4)}
+                </div>
+                <div>
+                  <strong>Достопримечательности:</strong> {locationContext.attractions.length}
+                </div>
+              </div>
+              
+              {locationContext.attractions.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="font-semibold mb-2">Популярные места:</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {locationContext.attractions.slice(0, 4).map((attraction, index) => (
+                      <div key={index} className="p-2 bg-white rounded border">
+                        <div className="font-medium text-sm">{attraction.name}</div>
+                        <div className="text-xs text-gray-600">{attraction.description}</div>
+                        {attraction.rating && (
+                          <div className="text-xs text-yellow-600">⭐ {attraction.rating}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {locationUI.error && (
+            <div className="mt-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded">
+              {locationUI.error}
+            </div>
+          )}
         </div>
 
         {/* Service Status */}
@@ -578,7 +883,7 @@ const V2V: React.FC = () => {
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Голосовое управление</h2>
           <div className="flex flex-col sm:flex-row gap-4 items-center">
-            <div className="flex space-x-4">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={handleStartRecording}
                 disabled={!v2vService.isConnected || isRecording || processingState === 'processing' || processingState === 'playing'}
@@ -596,6 +901,29 @@ const V2V: React.FC = () => {
                 <span className="text-xl">⏹️</span>
                 <span>Остановить</span>
               </button>
+              
+              {locationPermission.status === 'granted' && (
+                <>
+                  <button
+                    onClick={locationUI.isWatching ? stopLocationWatching : startLocationWatching}
+                    className={`px-4 py-3 text-white rounded-lg hover:opacity-80 flex items-center space-x-2 transition-all ${
+                      locationUI.isWatching ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-500 hover:bg-green-600'
+                    }`}
+                  >
+                    <span className="text-xl">{locationUI.isWatching ? '⏸️' : '👁️'}</span>
+                    <span>{locationUI.isWatching ? 'Остановить отслеживание' : 'Начать отслеживание'}</span>
+                  </button>
+                  
+                  <button
+                    onClick={requestLocationPermission}
+                    disabled={locationUI.isRequesting}
+                    className="px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 transition-all"
+                  >
+                    <span className="text-xl">🔄</span>
+                    <span>{locationUI.isRequesting ? 'Обновление...' : 'Обновить местоположение'}</span>
+                  </button>
+                </>
+              )}
             </div>
 
             <div className="text-sm text-gray-600">
@@ -724,6 +1052,38 @@ const V2V: React.FC = () => {
             <div>
               <strong>Активные сессии:</strong> {serviceStatus?.active_sessions || 0}
             </div>
+            <div>
+              <strong>Геолокация:</strong> 
+              <span className={`ml-2 ${
+                locationPermission.status === 'granted' ? 'text-green-600' :
+                locationPermission.status === 'denied' ? 'text-red-600' : 'text-yellow-600'
+              }`}>
+                {locationPermission.status === 'granted' ? '✅ Активна' :
+                 locationPermission.status === 'denied' ? '❌ Отключена' : '⏳ Проверка...'}
+              </span>
+            </div>
+            <div>
+              <strong>Отслеживание:</strong> 
+              <span className={`ml-2 ${locationUI.isWatching ? 'text-green-600' : 'text-gray-600'}`}>
+                {locationUI.isWatching ? '✅ Активно' : '⏸️ Отключено'}
+              </span>
+            </div>
+            {locationContext && (
+              <>
+                <div>
+                  <strong>Текущий город:</strong> {locationContext.city.name}, {locationContext.city.country}
+                </div>
+                <div>
+                  <strong>Часовой пояс:</strong> {locationContext.timezone}
+                </div>
+                <div>
+                  <strong>Местное время:</strong> {locationContext.localTime}
+                </div>
+                <div>
+                  <strong>Достопримечательности:</strong> {locationContext.attractions.length} найдено
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

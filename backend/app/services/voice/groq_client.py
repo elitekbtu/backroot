@@ -74,7 +74,7 @@ class GroqClient:
         except Exception as e:
             logger.warning(f"Async model validation failed: {e}")
 
-    async def generate_response(self, user_input: str, user_id: str, user_sessions: Dict[str, Any]) -> str:
+    async def generate_response(self, user_input: str, user_id: str, user_sessions: Dict[str, Any], custom_system_prompt: str = None) -> str:
         """Generate AI response using Groq's llama-3.1-70b-versatile (configurable)."""
         try:
             if not self.api_key:
@@ -83,10 +83,12 @@ class GroqClient:
             session = user_sessions.get(user_id, {})
             conversation_history = session.get("conversation_history", [])
 
+            system_prompt = custom_system_prompt or "You are a helpful AI assistant. Respond naturally and conversationally. Keep responses concise but helpful."
+            
             messages = [
                 {
                     "role": "system",
-                    "content": "You are a helpful AI assistant. Respond naturally and conversationally. Keep responses concise but helpful.",
+                    "content": system_prompt,
                 }
             ]
             for exchange in conversation_history[-10:]:
