@@ -55,6 +55,27 @@ export const collectCoin = async (coinId: number): Promise<ApiResponse<CoinColle
   }
 };
 
+// Collect a coin (public endpoint for AR)
+export const collectCoinPublic = async (coinId: number): Promise<ApiResponse<{ success: boolean; message: string }>> => {
+  try {
+    const response = await apiClient.post<{ success: boolean; message: string }>('/coin-collections/public', {
+      coin_id: coinId
+    });
+    return { 
+      success: true, 
+      data: response 
+    };
+  } catch (error) {
+    console.error('Collect coin public failed:', error);
+    return { 
+      success: false, 
+      error: { 
+        detail: error instanceof Error ? error.message : 'Failed to collect coin' 
+      } 
+    };
+  }
+};
+
 // Get user's collections
 export const getUserCollections = async (limit: number = 50): Promise<ApiResponse<CoinCollectionResponse[]>> => {
   try {

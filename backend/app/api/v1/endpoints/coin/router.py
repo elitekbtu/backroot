@@ -39,11 +39,10 @@ async def get_coins(
 
 @router.get("/ar", response_model=List[CoinResponse])
 async def get_coins_for_ar(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     """
-    Get all active coins with AR models for AR functionality
+    Get all active coins with AR models for AR functionality (public endpoint)
     """
     return CoinService.get_active_coins_for_ar(db)
 

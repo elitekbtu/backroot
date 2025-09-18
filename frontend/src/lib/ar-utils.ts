@@ -287,6 +287,29 @@ export class ARSessionManager {
   }
 }
 
+// Get optimal video constraints: try rear/environment first, fallback to default
+export const getOptimalVideoConstraints = async (): Promise<MediaStreamConstraints['video']> => {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoInputs = devices.filter(d => d.kind === 'videoinput');
+
+    // Try to find a device that is labeled as back/environment facing
+    const rear = videoInputs.find(d => /back|rear|environment/i.test(d.label));
+    if (rear) {
+      return { deviceId: { exact: rear.deviceId } };
+    }
+
+    // Fallback to facingMode environment
+    if (videoInputs.length > 0) {
+      return { deviceId: { exact: videoInputs[0].deviceId } };
+    }
+  } catch (e) {
+    console.warn('Failed to enumerate devices:', e);
+  }
+  // Generic fallback
+  return { facingMode: { ideal: 'environment' } };
+};
+
 // Export default AR utilities
 export default {
   isARSupported,

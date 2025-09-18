@@ -8,7 +8,6 @@ import Weather from './pages/Weather';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import AR from './pages/AR';
-import UniversalARPage from './pages/UniversalARPage';
 import V2V from './pages/V2V';
 import POICollector from './pages/POICollector';
 import ARTest from './components/ARTest';
@@ -65,7 +64,6 @@ const AppRoutes = () => {
       </Route>
 
       <Route path="/ar-test" element={<ARTest />} />
-      <Route path="/universal-ar" element={<UniversalARPage />} />
 
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

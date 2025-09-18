@@ -11,7 +11,7 @@ import type {
   CoinCreate,
   CoinUpdate
 } from '../types/coin';
-import WorkingAR from '../components/WorkingAR';
+import SimpleAR from '../components/SimpleAR';
 
 const ARPage: React.FC = () => {
   const [coins, setCoins] = useState<CoinResponse[]>([]);
@@ -200,7 +200,7 @@ const ARPage: React.FC = () => {
   if (showAR) {
     return (
       <div className="min-h-screen">
-        <WorkingAR onBack={() => setShowAR(false)} />
+        <SimpleAR onBack={() => setShowAR(false)} />
       </div>
     );
   }
@@ -330,12 +330,6 @@ const ARPage: React.FC = () => {
                 className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all font-semibold shadow-lg"
               >
                 🥽 Launch AR
-              </button>
-              <button
-                onClick={() => window.location.href = '/universal-ar'}
-                className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all font-semibold shadow-lg"
-              >
-                🌟 Universal AR
               </button>
             </div>
           </div>
