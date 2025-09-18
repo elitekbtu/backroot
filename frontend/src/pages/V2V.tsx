@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { v2vService } from '../api/v2v';
 import { useAuth } from '../context/AuthContext';
 import TalkingHead from '../components/TalkingHead';
@@ -29,6 +29,23 @@ const V2V: React.FC = () => {
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [currentLipSyncData, setCurrentLipSyncData] = useState<LipSyncData | null>(null);
   const [avatarMood, setAvatarMood] = useState<string>('neutral');
+  
+  // Memoized lip sync data to prevent unnecessary re-renders
+  const memoizedLipSyncData = useMemo(() => {
+    if (!currentLipSyncData) return null;
+    return currentLipSyncData;
+  }, [currentLipSyncData]);
+
+  // Memoized avatar options to prevent unnecessary re-renders
+  const memoizedAvatarOptions = useMemo(() => ({
+    cameraView: 'upper' as const,
+    lightAmbientIntensity: 2,
+    lightDirectIntensity: 30,
+    avatarIdleEyeContact: 0.3,
+    avatarIdleHeadMove: 0.5,
+    avatarSpeakingEyeContact: 0.7,
+    avatarSpeakingHeadMove: 0.3
+  }), []);
   
   const userId = user?.id?.toString() || 'anonymous';
 
@@ -200,8 +217,8 @@ const V2V: React.FC = () => {
     };
   };
 
-  // Avatar configuration
-  const avatarConfig: AvatarConfig = {
+  // Memoized avatar configuration to prevent unnecessary re-renders
+  const avatarConfig: AvatarConfig = useMemo(() => ({
     url: 'https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.glb?morphTargets=ARKit,Oculus+Visemes,mouthOpen,mouthSmile,eyesClosed,eyesLookUp,eyesLookDown&textureSizeLimit=1024&textureFormat=png',
     body: 'F',
     lipsyncLang: 'en',
@@ -213,7 +230,7 @@ const V2V: React.FC = () => {
     avatarIdleHeadMove: 0.5,
     avatarSpeakingEyeContact: 0.7,
     avatarSpeakingHeadMove: 0.3
-  };
+  }), [avatarMood]);
 
   // Initialize V2V service
   useEffect(() => {
@@ -316,18 +333,18 @@ const V2V: React.FC = () => {
     };
   }, [userId]);
 
-  // Avatar handlers
-  const handleAvatarReady = () => {
+  // Memoized avatar handlers to prevent unnecessary re-renders
+  const handleAvatarReady = useCallback(() => {
     setAvatarReady(true);
     setAvatarError(null);
     console.log('Avatar is ready!');
-  };
+  }, []);
 
-  const handleAvatarError = (error: Error) => {
+  const handleAvatarError = useCallback((error: Error) => {
     setAvatarError(error.message);
     setAvatarReady(false);
     console.error('Avatar error:', error);
-  };
+  }, []);
 
   const handleStartRecording = async () => {
     try {
@@ -505,19 +522,11 @@ const V2V: React.FC = () => {
                 className="w-full"
                 onReady={handleAvatarReady}
                 onError={handleAvatarError}
-                lipSyncData={currentLipSyncData}
+                lipSyncData={memoizedLipSyncData}
                 isPlaying={processingState === 'playing'}
                 avatarConfig={avatarConfig}
                 mood={avatarMood}
-                options={{
-                  cameraView: 'upper',
-                  lightAmbientIntensity: 2,
-                  lightDirectIntensity: 30,
-                  avatarIdleEyeContact: 0.3,
-                  avatarIdleHeadMove: 0.5,
-                  avatarSpeakingEyeContact: 0.7,
-                  avatarSpeakingHeadMove: 0.3
-                }}
+                options={memoizedAvatarOptions}
               />
             </div>
             <div className="space-y-4">
@@ -543,9 +552,9 @@ const V2V: React.FC = () => {
                     😊 {avatarMood.charAt(0).toUpperCase() + avatarMood.slice(1)}
                   </div>
                   <div className={`px-3 py-1 rounded-full text-sm ${
-                    currentLipSyncData ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    memoizedLipSyncData ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                   }`}>
-                    {currentLipSyncData ? '🎭 Lip Sync Active' : '😐 No Lip Sync'}
+                    {memoizedLipSyncData ? '🎭 Lip Sync Active' : '😐 No Lip Sync'}
                   </div>
                 </div>
               </div>

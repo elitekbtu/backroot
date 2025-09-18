@@ -125,8 +125,12 @@ class V2VWebSocketService:
             # Process audio and convert to text using OpenAIClient directly
             transcript = await self.openai_client.speech_to_text(audio_data)
             
-            # Generate AI response using Groq LLM
-            ai_response = await self.groq_client.generate_response(transcript, user_id, self.user_sessions)
+            # Generate AI response using Groq LLM with OpenAI fallback
+            try:
+                ai_response = await self.groq_client.generate_response(transcript, user_id, self.user_sessions)
+            except Exception as groq_error:
+                logger.warning(f"Groq failed, falling back to OpenAI: {groq_error}")
+                ai_response = await self.openai_client.generate_response(transcript, user_id, self.user_sessions)
             
             # Convert AI response to speech
             audio_response = await self.openai_client.text_to_speech(ai_response)
@@ -189,8 +193,12 @@ class V2VWebSocketService:
             if not text_input:
                 raise ValueError("No text provided")
             
-            # Generate AI response using Groq LLM
-            ai_response = await self.groq_client.generate_response(text_input, user_id, self.user_sessions)
+            # Generate AI response using Groq LLM with OpenAI fallback
+            try:
+                ai_response = await self.groq_client.generate_response(text_input, user_id, self.user_sessions)
+            except Exception as groq_error:
+                logger.warning(f"Groq failed, falling back to OpenAI: {groq_error}")
+                ai_response = await self.openai_client.generate_response(text_input, user_id, self.user_sessions)
             
             # Convert AI response to speech
             audio_response = await self.openai_client.text_to_speech(ai_response)
@@ -454,11 +462,38 @@ class V2VWebSocketService:
         if user_id in self.user_sessions:
             self.user_sessions[user_id]["conversation_history"] = []
     
+    async def get_service_status(self) -> dict:
+        """Get current service status including API health."""
+        try:
+            # Test Groq API
+            groq_working = await self.groq_client.validate_api_key()
+            
+            # Test OpenAI API
+            openai_working = await self.openai_client.test_tts_model()
+            
+            return {
+                "status": "operational" if (groq_working or openai_working) else "error",
+                "openai_api_key_valid": openai_working,
+                "groq_api_key_valid": groq_working,
+                "active_connections": len(self.active_connections),
+                "active_sessions": len(self.user_sessions)
+            }
+        except Exception as e:
+            logger.error(f"Error getting service status: {e}")
+            return {
+                "status": "error",
+                "openai_api_key_valid": False,
+                "groq_api_key_valid": False,
+                "active_connections": len(self.active_connections),
+                "active_sessions": len(self.user_sessions),
+                "error": str(e)
+            }
+
     async def test_models(self) -> dict:
         """Test if all models are working (Groq for LLM, OpenAI for TTS/STT)."""
         try:
             results = {
-                "gpt_model": True,  # Assume GPT works if we can create the client
+                "gpt_model": await self.groq_client.validate_api_key(),
                 "tts_model": await self.openai_client.test_tts_model(),
                 "stt_model": await self.openai_client.test_stt_model()
             }

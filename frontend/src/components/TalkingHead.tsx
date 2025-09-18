@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { TalkingHead as TalkingHeadEngine, type TalkingHeadOptions } from '../lib/talkinghead';
 import type { LipSyncData, AvatarConfig } from '../types/v2v';
 
@@ -70,22 +70,36 @@ const TalkingHead: React.FC<TalkingHeadProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [loadingProgress, setLoadingProgress] = useState(0);
 
+  // Memoize options to prevent unnecessary re-initialization
+  const memoizedOptions = useMemo((): TalkingHeadOptions => {
+    return {
+      cameraView: 'upper' as const,
+      avatarMood: mood,
+      ...options
+    };
+  }, [mood, options]);
+
+  // Memoize callbacks to prevent unnecessary re-initialization
+  const memoizedOnReady = useCallback(() => {
+    onReady?.();
+  }, [onReady]);
+
+  const memoizedOnError = useCallback((error: Error) => {
+    onError?.(error);
+  }, [onError]);
+
   useEffect(() => {
     if (!containerRef.current) return;
 
     try {
       // Initialize TalkingHead with options
-      talkingHeadRef.current = new TalkingHeadWrapper(containerRef.current, {
-        cameraView: 'upper',
-        avatarMood: mood,
-        ...options
-      });
+      talkingHeadRef.current = new TalkingHeadWrapper(containerRef.current, memoizedOptions);
       
       // Set up ready callback
       const checkReady = () => {
         if (talkingHeadRef.current?.getReady()) {
           setIsInitialized(true);
-          onReady?.();
+          memoizedOnReady();
         } else {
           setTimeout(checkReady, 100);
         }
@@ -95,13 +109,13 @@ const TalkingHead: React.FC<TalkingHeadProps> = ({
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to initialize TalkingHead');
       setError(error.message);
-      onError?.(error);
+      memoizedOnError(error);
     }
 
     return () => {
       talkingHeadRef.current?.dispose();
     };
-  }, [onReady, onError, mood, options]);
+  }, [memoizedOptions, memoizedOnReady, memoizedOnError]);
 
   useEffect(() => {
     if (!talkingHeadRef.current || !lipSyncData) return;
@@ -125,8 +139,14 @@ const TalkingHead: React.FC<TalkingHeadProps> = ({
     talkingHeadRef.current.setMood(mood);
   }, [mood]);
 
+  // Memoize avatar config to prevent unnecessary reloads
+  const memoizedAvatarConfig = useMemo(() => {
+    if (!avatarConfig) return null;
+    return avatarConfig;
+  }, [avatarConfig]);
+
   useEffect(() => {
-    if (!talkingHeadRef.current || !avatarConfig) return;
+    if (!talkingHeadRef.current || !memoizedAvatarConfig) return;
 
     const loadAvatar = async () => {
       try {
@@ -134,7 +154,7 @@ const TalkingHead: React.FC<TalkingHeadProps> = ({
         setLoadingProgress(0);
         
         const success = await talkingHeadRef.current!.loadAvatar(
-          avatarConfig,
+          memoizedAvatarConfig,
           (progress) => {
             if (progress.lengthComputable) {
               const percentComplete = (progress.loaded / progress.total) * 100;
@@ -149,12 +169,12 @@ const TalkingHead: React.FC<TalkingHeadProps> = ({
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Avatar loading failed');
         setError(error.message);
-        onError?.(error);
+        memoizedOnError(error);
       }
     };
 
     loadAvatar();
-  }, [avatarConfig, onError]);
+  }, [memoizedAvatarConfig, memoizedOnError]);
 
   if (error) {
     return (
