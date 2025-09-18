@@ -10,9 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@googlemaps/js-api-loader": "^1.16.10",
     "@react-three/drei": "^10.7.6",
     "@react-three/fiber": "^9.3.0",
     "@react-three/xr": "^6.6.26",
+    "@types/google.maps": "^3.58.1",
     "@types/node": "^24.3.1",
     "@types/three": "^0.180.0",
     "axios": "^1.11.0",

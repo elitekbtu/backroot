@@ -9,6 +9,7 @@ import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import AR from './pages/AR';
 import V2V from './pages/V2V';
+import POICollector from './pages/POICollector';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 
@@ -56,6 +57,7 @@ const AppRoutes = () => {
         <Route path="weather" element={<Weather />} />
         <Route path="ar" element={<AR />} />
         <Route path="v2v" element={<V2V />} />
+        <Route path="poi" element={<POICollector />} />
         <Route path="profile" element={<Profile />} />
         <Route path="settings" element={<Settings />} />
       </Route>
