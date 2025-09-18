@@ -32,6 +32,10 @@ services:
     build: ./frontend
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - ./ssl:/etc/ssl/certs:ro
+      - ./ssl:/etc/ssl/private:ro
     depends_on:
       - backend
 

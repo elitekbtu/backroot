@@ -171,6 +171,10 @@ const RealtimeVoiceChat: React.FC<RealtimeVoiceChatProps> = ({
     if (!isConnected || isRecording) return;
 
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('MediaDevices API not supported. Please use HTTPS or localhost.');
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,

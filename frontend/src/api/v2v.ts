@@ -232,6 +232,16 @@ export class V2VService {
         return true;
       }
 
+      // Check if MediaDevices API is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('MediaDevices API not supported. Please use HTTPS or localhost.');
+      }
+
+      // Check if we're on HTTPS or localhost
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        throw new Error('Microphone access requires HTTPS. Please use HTTPS or localhost.');
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           sampleRate: 16000,
@@ -262,7 +272,21 @@ export class V2VService {
 
       return true;
     } catch (error) {
-      this.onError?.({ message: 'Failed to start recording: ' + (error instanceof Error ? error.message : 'Unknown error') });
+      let errorMessage = 'Failed to start recording: ';
+      if (error instanceof Error) {
+        if (error.message.includes('MediaDevices API not supported')) {
+          errorMessage = 'Microphone access not supported. Please use a modern browser with HTTPS.';
+        } else if (error.message.includes('HTTPS')) {
+          errorMessage = 'Microphone access requires HTTPS. Please access the site via HTTPS.';
+        } else if (error.message.includes('Permission denied')) {
+          errorMessage = 'Microphone permission denied. Please allow microphone access and try again.';
+        } else {
+          errorMessage += error.message;
+        }
+      } else {
+        errorMessage += 'Unknown error';
+      }
+      this.onError?.({ message: errorMessage });
       return false;
     }
   }
