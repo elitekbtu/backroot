@@ -67,12 +67,14 @@ const V2V: React.FC = () => {
     avatarIdleHeadMove: 0.5,
     avatarSpeakingEyeContact: 0.7,
     avatarSpeakingHeadMove: 0.3,
-    cameraDistance: 1.5, // Оптимальное расстояние
-    cameraHeight: 0.0,   // По центру по вертикали
+    cameraDistance: 1.8, // Немного дальше для лучшего обзора
+    cameraHeight: 0.2,   // Немного выше для лучшего угла
     cameraAngle: 0.0,    // Без наклона - ровно
-    avatarPosition: { x: 0, y: 0, z: 0 }, // Центрированная позиция
-    avatarRotation: { x: 0, y: 0, z: 0 }  // Без поворота - ровно стоит
-  }), []);
+    avatarPosition: { x: 0, y: -0.1, z: 0 }, // Немного ниже для центрирования
+    avatarRotation: { x: 0, y: 0, z: 0 }, // Без поворота - ровно стоит
+    canvasWidth: deviceInfo.isMobile ? 256 : deviceInfo.isKiosk ? 384 : 320,
+    canvasHeight: deviceInfo.isMobile ? 256 : deviceInfo.isKiosk ? 384 : 320
+  }), [deviceInfo.isMobile, deviceInfo.isKiosk]);
   
   const userId = user?.id?.toString() || 'anonymous';
 
@@ -430,12 +432,14 @@ const V2V: React.FC = () => {
     avatarIdleHeadMove: 0.5,
     avatarSpeakingEyeContact: 0.7,
     avatarSpeakingHeadMove: 0.3,
-    cameraDistance: 1.5, // Оптимальное расстояние
-    cameraHeight: 0.0,   // По центру по вертикали
+    cameraDistance: 1.8, // Немного дальше для лучшего обзора
+    cameraHeight: 0.2,   // Немного выше для лучшего угла
     cameraAngle: 0.0,    // Без наклона - ровно
-    avatarPosition: { x: 0, y: 0, z: 0 }, // Центрированная позиция
-    avatarRotation: { x: 0, y: 0, z: 0 }  // Без поворота - ровно стоит
-  }), [avatarMood]);
+    avatarPosition: { x: 0, y: -0.1, z: 0 }, // Немного ниже для центрирования
+    avatarRotation: { x: 0, y: 0, z: 0 }, // Без поворота - ровно стоит
+    canvasWidth: deviceInfo.isMobile ? 256 : deviceInfo.isKiosk ? 384 : 320,
+    canvasHeight: deviceInfo.isMobile ? 256 : deviceInfo.isKiosk ? 384 : 320
+  }), [avatarMood, deviceInfo.isMobile, deviceInfo.isKiosk]);
 
   // Initialize V2V service
   useEffect(() => {
@@ -771,14 +775,21 @@ const V2V: React.FC = () => {
               deviceInfo.isKiosk ? 'w-96 h-96' : 
               deviceInfo.isMobile ? 'w-64 h-64' : 'w-80 h-80'
             }`}>
-              <TalkingHead
-                className="w-full h-full object-contain"
-                lipSyncData={memoizedLipSyncData}
-                isPlaying={processingState === 'playing'}
-                avatarConfig={avatarConfig}
-                mood={avatarMood}
-                options={memoizedAvatarOptions}
-              />
+              <div className="relative w-full h-full object-contain">
+                <div className={`w-full ${
+                  deviceInfo.isKiosk ? 'h-96' : 
+                  deviceInfo.isMobile ? 'h-64' : 'h-80'
+                } bg-gradient-to-b from-blue-50 to-blue-100 rounded-lg overflow-hidden`}>
+                  <TalkingHead
+                    className="w-full h-full object-contain"
+                    lipSyncData={memoizedLipSyncData}
+                    isPlaying={processingState === 'playing'}
+                    avatarConfig={avatarConfig}
+                    mood={avatarMood}
+                    options={memoizedAvatarOptions}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
