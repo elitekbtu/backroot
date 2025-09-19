@@ -119,10 +119,14 @@ class V2VWebSocketService:
                 "message": "Processing voice input..."
             }))
             
-            # Extract audio data
+            # Extract audio data and language
             audio_data = data.get("audio_data")
+            language = data.get("language", "kk")  # Default to Kazakh
             if not audio_data:
                 raise ValueError("No audio data provided")
+            
+            # Update language preference
+            self.user_sessions[user_id]["language"] = language
             
             logger.info(f"Processing voice input for user {user_id}, audio data length: {len(audio_data) if audio_data else 0}")
             
@@ -144,7 +148,8 @@ class V2VWebSocketService:
                     ai_response = await self.openai_client.generate_response(transcript, user_id, self.user_sessions)
             
             # Convert AI response to speech
-            audio_response = await self.openai_client.text_to_speech(ai_response)
+            language = self.user_sessions[user_id].get("language", "kk")
+            audio_response = await self.openai_client.text_to_speech(ai_response, language)
             
             # Generate lip-sync data for the AI response
             lip_sync_data = await self.generate_lip_sync_data(ai_response)
@@ -199,9 +204,10 @@ class V2VWebSocketService:
                 "message": "Processing text input..."
             }))
             
-            # Extract text and location context
+            # Extract text, location context, and language
             text_input = data.get("text")
             location_context = data.get("location_context")
+            language = data.get("language", "kk")  # Default to Kazakh
             
             if not text_input:
                 raise ValueError("No text provided")
@@ -209,6 +215,9 @@ class V2VWebSocketService:
             # Update location context if provided
             if location_context:
                 self.user_sessions[user_id]["location_context"] = location_context
+            
+            # Update language preference
+            self.user_sessions[user_id]["language"] = language
             
             # Generate AI response using Groq LLM with OpenAI fallback
             try:
@@ -225,7 +234,8 @@ class V2VWebSocketService:
                     ai_response = await self.openai_client.generate_response(text_input, user_id, self.user_sessions)
             
             # Convert AI response to speech
-            audio_response = await self.openai_client.text_to_speech(ai_response)
+            language = self.user_sessions[user_id].get("language", "kk")
+            audio_response = await self.openai_client.text_to_speech(ai_response, language)
             
             # Generate lip-sync data for the AI response
             lip_sync_data = await self.generate_lip_sync_data(ai_response)
@@ -579,7 +589,15 @@ class V2VWebSocketService:
 
     def _get_location_aware_prompt(self, user_id: str) -> str:
         """Generate location-aware system prompt for AI."""
-        base_prompt = """You are a helpful AI assistant with voice-to-voice capabilities. You can speak naturally and have realistic lip-sync animations. You are designed to be conversational, helpful, and engaging.
+        # Get user's language preference
+        language = "kk"  # Default to Kazakh
+        if user_id in self.user_sessions:
+            language = self.user_sessions[user_id].get("language", "kk")
+        
+        # Language-specific prompts
+        language_prompts = {
+            "kk": {
+                "base": """You are a helpful AI assistant with voice-to-voice capabilities. You can speak naturally and have realistic lip-sync animations. You are designed to be conversational, helpful, and engaging.
 
 IMPORTANT: You must respond in Kazakh language (қазақ тілі). All your responses should be in Kazakh, using proper Kazakh grammar and vocabulary.
 
@@ -597,7 +615,57 @@ Guidelines:
 - Ask follow-up questions when appropriate
 - Maintain context throughout the conversation
 - Use proper Kazakh grammar and vocabulary
-- Be culturally appropriate for Kazakh speakers"""
+- Be culturally appropriate for Kazakh speakers""",
+                "location": "ЖЕРЛЕСУ КОНТЕКСТІ:"
+            },
+            "ru": {
+                "base": """You are a helpful AI assistant with voice-to-voice capabilities. You can speak naturally and have realistic lip-sync animations. You are designed to be conversational, helpful, and engaging.
+
+IMPORTANT: You must respond in Russian language (русский язык). All your responses should be in Russian, using proper Russian grammar and vocabulary.
+
+Key capabilities:
+- Voice-to-voice conversation with natural speech in Russian
+- Realistic lip-sync animations that match your speech
+- Context-aware responses based on conversation history
+- Natural, conversational tone suitable for voice interaction in Russian
+
+Guidelines:
+- Always respond in Russian language
+- Keep responses concise and natural for voice delivery
+- Use appropriate pauses and emphasis
+- Be helpful and engaging
+- Ask follow-up questions when appropriate
+- Maintain context throughout the conversation
+- Use proper Russian grammar and vocabulary
+- Be culturally appropriate for Russian speakers""",
+                "location": "КОНТЕКСТ МЕСТОПОЛОЖЕНИЯ:"
+            },
+            "en": {
+                "base": """You are a helpful AI assistant with voice-to-voice capabilities. You can speak naturally and have realistic lip-sync animations. You are designed to be conversational, helpful, and engaging.
+
+IMPORTANT: You must respond in English language. All your responses should be in English, using proper English grammar and vocabulary.
+
+Key capabilities:
+- Voice-to-voice conversation with natural speech in English
+- Realistic lip-sync animations that match your speech
+- Context-aware responses based on conversation history
+- Natural, conversational tone suitable for voice interaction in English
+
+Guidelines:
+- Always respond in English language
+- Keep responses concise and natural for voice delivery
+- Use appropriate pauses and emphasis
+- Be helpful and engaging
+- Ask follow-up questions when appropriate
+- Maintain context throughout the conversation
+- Use proper English grammar and vocabulary
+- Be culturally appropriate for English speakers""",
+                "location": "LOCATION CONTEXT:"
+            }
+        }
+        
+        prompt_data = language_prompts.get(language, language_prompts["kk"])
+        base_prompt = prompt_data["base"]
 
         # Add location context if available
         if user_id in self.user_sessions:
@@ -609,7 +677,9 @@ Guidelines:
                 timezone = location_context.get("timezone", "")
                 local_time = location_context.get("local_time", "")
                 
-                location_prompt = f"""
+                # Language-specific location context
+                location_contexts = {
+                    "kk": f"""
 
 ЖЕРЛЕСУ КОНТЕКСТІ:
 Сіз қазір {city_name}{f', {country}' if country else ''} қаласындасыз. Жергілікті уақыт {local_time} ({timezone}).
@@ -625,11 +695,44 @@ Guidelines:
 Пайдаланушылар сұрағанда:
 - "Мұнда не істеуге болады" немесе "көруге болатын орындар" - жергілікті көрікті жерлер мен белсенділіктерді ұсыну
 - "Қайда тамақтануға болады" - жергілікті ресторандар мен тамақ тәжірибелерін ұсыну
-- "Қалай жүруге болады" - көлік опциялары мен бағыттарды беру
-- "Ауа-райы" - ағымдағы жағдайлар мен болжамдарды беру
-- "Жергілікті кеңестер" - мәдени түсініктер мен практикалық кеңестерді бөлісу
+- "Қалай жүруге болады" - көлік опциялары мен бағыттарды беру""",
+                    "ru": f"""
 
-{city_name} қаласына арнайы назар аударыңыз және практикалық, іс-әрекетке жарамды кеңестер беріңіз. Егер сіз орын туралы нақты бірдеңе білмесеңіз, шынайы болыңыз, бірақ жалпы саяхат кеңестерімен көмектесуге тырысыңыз."""
+КОНТЕКСТ МЕСТОПОЛОЖЕНИЯ:
+Вы сейчас находитесь в городе {city_name}{f', {country}' if country else ''}. Местное время {local_time} ({timezone}).
+
+Как местный гид, вы можете помочь:
+- Рекомендации по достопримечательностям, ресторанам и развлечениям
+- Направления и транспортные опции
+- Местные традиции, культура и советы
+- Погода и сезонная информация
+- Историческая и культурная информация о регионе
+- Рекомендации по шопингу, развлечениям и питанию
+
+Когда пользователи спрашивают:
+- "Что здесь можно делать" или "достопримечательности" - предложить местные достопримечательности и активности
+- "Где поесть" - предложить местные рестораны и кулинарные впечатления
+- "Как добраться" - предоставить транспортные опции и направления""",
+                    "en": f"""
+
+LOCATION CONTEXT:
+You are currently in {city_name}{f', {country}' if country else ''}. Local time is {local_time} ({timezone}).
+
+As a local guide, you can help with:
+- Recommendations for attractions, dining, and activities
+- Directions and transportation options
+- Local traditions, culture, and tips
+- Weather and seasonal information
+- Historical and cultural information about the area
+- Shopping, entertainment, and dining recommendations
+
+When users ask:
+- "What can I do here" or "attractions" - suggest local attractions and activities
+- "Where to eat" - recommend local restaurants and culinary experiences
+- "How to get there" - provide transportation options and directions"""
+                }
+                
+                location_prompt = location_contexts.get(language, location_contexts["kk"])
 
                 # Add attractions if available
                 attractions = location_context.get("attractions", [])

@@ -90,19 +90,28 @@ class OpenAIClient:
             logger.error(f"Error in speech-to-text: {e}")
             raise ValueError(f"Speech-to-text failed: {e}")
     
-    async def text_to_speech(self, text: str) -> str:
+    async def text_to_speech(self, text: str, language: str = "kk") -> str:
         """Convert text to speech using OpenAI TTS."""
         try:
             # Validate text length (OpenAI TTS has limits)
             if len(text) > 4096:
                 text = text[:4096] + "..."  # Truncate if too long
             
+            # Language-specific voice selection
+            voice_mapping = {
+                "kk": "alloy",  # Kazakh - use alloy for general purpose
+                "ru": "nova",   # Russian - use nova for better Russian pronunciation
+                "en": "alloy"   # English - use alloy for clear English
+            }
+            
+            voice = voice_mapping.get(language, "alloy")
+            
             response = await self.client.audio.speech.create(
                 model=self.tts_model,
-                voice="alloy",  # Options: alloy, echo, fable, onyx, nova, shimmer
+                voice=voice,
                 input=text,
                 response_format="mp3",  # Options: mp3, opus, aac, flac
-                speed=1.0  # Speed multiplier (0.25 to 4.0)
+                speed=1.5  # Speed multiplier (0.25 to 4.0)
             )
             
             # Convert response to base64

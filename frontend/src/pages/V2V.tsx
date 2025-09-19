@@ -2,8 +2,10 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { v2vService } from '../api/v2v';
 import { locationService } from '../api/location';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useDeviceDetection } from '../hooks/useDeviceDetection';
 import TalkingHead from '../components/TalkingHead';
+import LanguageSelector from '../components/LanguageSelector';
 import type { 
   VoiceResponseMessage, 
   VoiceProcessingState,
@@ -20,6 +22,7 @@ import type {
 
 const V2V: React.FC = () => {
   const { user } = useAuth();
+  const { language } = useLanguage();
   const deviceInfo = useDeviceDetection();
   const [processingState, setProcessingState] = useState<VoiceProcessingState>('idle');
   const [isRecording, setIsRecording] = useState(false);
@@ -515,6 +518,8 @@ const V2V: React.FC = () => {
           setLocationContext(context);
         });
 
+        // Set initial language
+        v2vService.setLanguage(language);
 
         // Connect to V2V service
         const connected = await v2vService.connect(userId);
@@ -548,6 +553,13 @@ const V2V: React.FC = () => {
     };
   }, [userId]);
 
+  // Update language in V2V service when language changes
+  useEffect(() => {
+    if (isInitialized) {
+      v2vService.setLanguage(language);
+      console.log('Language updated in V2V service:', language);
+    }
+  }, [language, isInitialized]);
 
   const handleStartRecording = async () => {
     try {
@@ -570,7 +582,7 @@ const V2V: React.FC = () => {
 
   const handleTextSubmit = () => {
     if (textInput.trim()) {
-      const success = v2vService.sendTextInput(textInput.trim(), locationContext || undefined);
+      const success = v2vService.sendTextInput(textInput.trim(), locationContext || undefined, language);
       if (success) {
         // Add to conversation history immediately
         setConversationHistory(prev => [...prev, {
@@ -645,7 +657,7 @@ const V2V: React.FC = () => {
           deviceInfo.isMobile ? 'p-3 sm:p-4' : 'p-4 sm:p-6'
         }`}>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="flex items-center space-x-3">
               <span className={`${
                 deviceInfo.isKiosk ? 'text-4xl sm:text-5xl' : 
@@ -695,6 +707,26 @@ const V2V: React.FC = () => {
                     `Обновлено: ${locationUI.lastUpdate.toLocaleTimeString()}` : 
                     'Нет данных'
                   }
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <span className={`${
+                deviceInfo.isKiosk ? 'text-4xl sm:text-5xl' : 
+                deviceInfo.isMobile ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'
+              }`}>
+                🌐
+              </span>
+              <div className="flex-1">
+                <div className={`font-medium text-gray-700 ${
+                  deviceInfo.isKiosk ? 'text-lg sm:text-xl' : 
+                  deviceInfo.isMobile ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'
+                }`}>
+                  Язык ответа
+                </div>
+                <div className="mt-1">
+                  <LanguageSelector />
                 </div>
               </div>
             </div>

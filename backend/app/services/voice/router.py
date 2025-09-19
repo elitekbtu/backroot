@@ -127,6 +127,62 @@ async def clear_user_session(
         raise HTTPException(status_code=500, detail=f"Error clearing session: {str(e)}")
 
 
+@router.post("/text")
+async def process_text_input(
+    text_data: dict,
+    current_user = Depends(get_current_user_from_token)
+):
+    """Process text input and return AI response with language support."""
+    try:
+        text = text_data.get("text")
+        location_context = text_data.get("location_context")
+        language = text_data.get("language", "kk")
+        
+        if not text:
+            raise HTTPException(status_code=400, detail="Text is required")
+        
+        user_id = str(current_user.id)
+        
+        # Create a mock WebSocket for processing
+        class MockWebSocket:
+            def __init__(self):
+                self.messages = []
+            
+            async def send_text(self, message: str):
+                self.messages.append(json.loads(message))
+        
+        mock_websocket = MockWebSocket()
+        
+        # Process the text input
+        await v2v_service.process_text_input(mock_websocket, user_id, {
+            "text": text,
+            "location_context": location_context,
+            "language": language
+        })
+        
+        # Get the response from the mock WebSocket
+        response_message = None
+        for message in mock_websocket.messages:
+            if message.get("type") == "voice_response":
+                response_message = message
+                break
+        
+        if not response_message:
+            raise HTTPException(status_code=500, detail="Failed to generate response")
+        
+        return {
+            "ai_response": response_message.get("ai_response", ""),
+            "audio_response": response_message.get("audio_response", ""),
+            "lip_sync_data": response_message.get("lip_sync_data", {}),
+            "language": language,
+            "timestamp": response_message.get("timestamp", "")
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing text: {str(e)}")
+
 @router.get("/stats")
 async def get_voice_service_stats(
     current_user = Depends(get_current_user_from_token)

@@ -48,6 +48,7 @@ export class V2VService {
   private _connectionState: WebSocketState = 'disconnected';
   private _processingState: VoiceProcessingState = 'idle';
   private _isRecording = false;
+  private _currentLanguage: string = 'kk'; // Default to Kazakh
 
   // Event handlers
   private onConnectionChange: ((state: WebSocketState) => void) | null = null;
@@ -97,6 +98,15 @@ export class V2VService {
 
   setOnLocationUpdate(handler: (location: LocationContext) => void) {
     this.onLocationUpdate = handler;
+  }
+
+  // Language management
+  setLanguage(language: string) {
+    this._currentLanguage = language;
+  }
+
+  getLanguage(): string {
+    return this._currentLanguage;
   }
 
   // REST API Methods
@@ -341,7 +351,8 @@ export class V2VService {
       
       const message = {
         type: 'voice_input',
-        audio_data: base64Audio
+        audio_data: base64Audio,
+        language: this._currentLanguage
       };
 
       console.log('Sending voice input message');
@@ -354,11 +365,12 @@ export class V2VService {
   }
 
   // Send text input
-  sendTextInput(text: string, locationContext?: LocationContext): boolean {
+  sendTextInput(text: string, locationContext?: LocationContext, language?: string): boolean {
     const message = {
       type: 'text_input',
       text: text,
-      location_context: locationContext
+      location_context: locationContext,
+      language: language || 'kk' // Default to Kazakh
     };
     return this.sendMessage(message);
   }

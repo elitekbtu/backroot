@@ -1,7 +1,4 @@
-#!/usr/bin/env python3
-"""
-Test script for Kazakh language API endpoints
-"""
+
 
 import requests
 import json
