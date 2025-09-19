@@ -8,6 +8,9 @@ import type { CoinResponse } from '../types/coin';
 
 interface SimpleARProps {
   onBack?: () => void;
+  onCollectCoin?: (coinId: number) => Promise<void>;
+  collectedCoinIds?: Set<number>;
+  collectingCoinId?: number | null;
 }
 
 // GLB Model Component
@@ -176,11 +179,16 @@ const ARScene: React.FC<{
   );
 };
 
-const SimpleAR: React.FC<SimpleARProps> = ({ onBack }) => {
+const SimpleAR: React.FC<SimpleARProps> = ({ 
+  onBack, 
+  onCollectCoin, 
+  collectedCoinIds, 
+  collectingCoinId 
+}) => {
   const [coins, setCoins] = useState<CoinResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [collectedCoins, setCollectedCoins] = useState<Set<number>>(new Set());
+  const [collectedCoins, setCollectedCoins] = useState<Set<number>>(collectedCoinIds || new Set());
   const [score, setScore] = useState(0);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -303,158 +311,207 @@ const SimpleAR: React.FC<SimpleARProps> = ({ onBack }) => {
     }
   }, []);
 
-        // Manual camera restart function
-        const startCamera = useCallback(async () => {
-          // Prevent multiple simultaneous camera initialization
-          if (cameraInitializing) {
-            console.log('Camera already initializing, skipping...');
-            return;
+  // Manual camera restart function
+  const startCamera = useCallback(async () => {
+    // Prevent multiple simultaneous camera initialization
+    if (cameraInitializing) {
+      console.log('Camera already initializing, skipping...');
+      return;
+    }
+
+    try {
+      setCameraInitializing(true);
+      setCameraError(null);
+      setCameraLoading(true);
+      
+      console.log('Restarting camera...');
+      
+      // Stop existing stream first
+      if (cameraStream) {
+        console.log('Stopping existing camera stream...');
+        cameraStream.getTracks().forEach(track => track.stop());
+        setCameraStream(null);
+      }
+      cameraInitializedRef.current = false;
+
+      // Clear existing video source safely
+      if (videoRef.current) {
+        try { videoRef.current.pause(); } catch {}
+        videoRef.current.srcObject = null;
+      }
+
+      // Wait a moment for cleanup
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      const constraints = {
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          focusMode: 'continuous', // Add focus mode for better focus control
+          facingMode: 'environment' // Use back camera for AR
+        },
+        audio: false
+      };
+
+      console.log('Requesting new camera stream...');
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('New camera stream obtained:', stream);
+      
+      setCameraStream(stream);
+      cameraInitializedRef.current = true;
+      
+      if (videoRef.current) {
+        console.log('Setting new video source...');
+        attachStreamAndAutoplay(stream);
+      }
+    } catch (err: any) {
+      console.error('Camera restart error:', err);
+      setCameraError(`Failed to restart camera: ${err.message || 'Please allow camera access'}`);
+      setCameraLoading(false);
+      setCameraInitializing(false);
+    }
+  }, [cameraStream, cameraInitializing, attachStreamAndAutoplay]);
+
+  // Handle coin collection
+  const handleCoinCollect = useCallback(async (coin: CoinResponse) => {
+    if (collectedCoins.has(coin.id) || collectingCoinId === coin.id) return;
+    
+    // Use external handler if provided, otherwise use internal logic
+    if (onCollectCoin) {
+      try {
+        await onCollectCoin(coin.id);
+        setCollectedCoins(prev => new Set([...prev, coin.id]));
+        setScore(prev => prev + 1);
+        console.log(`Collected ${coin.symbol}! Score: ${score + 1}`);
+      } catch (err) {
+        console.error('Error collecting coin:', err);
+      }
+    } else {
+      try {
+        const response = await collectCoinPublic(coin.id);
+        if (response.success) {
+          setCollectedCoins(prev => new Set([...prev, coin.id]));
+          setScore(prev => prev + 1);
+          console.log(`Collected ${coin.symbol}! Score: ${score + 1}`);
+        } else {
+          console.error('Failed to collect coin:', response.error);
+        }
+      } catch (err) {
+        console.error('Error collecting coin:', err);
+      }
+    }
+  }, [collectedCoins, score, onCollectCoin, collectingCoinId]);
+
+  // Manual collect all coins
+  const collectAllCoins = useCallback(async () => {
+    if (coins.length === 0 || collectedCoins.size === coins.length) {
+      return;
+    }
+
+    console.log('Collecting all coins...');
+
+    for (const coin of coins) {
+      if (!collectedCoins.has(coin.id)) {
+        try {
+          if (onCollectCoin) {
+            await onCollectCoin(coin.id);
+          } else {
+            await collectCoinPublic(coin.id);
           }
-
-          try {
-            setCameraInitializing(true);
-            setCameraError(null);
-            setCameraLoading(true);
-            
-            console.log('Restarting camera...');
-            
-            // Stop existing stream first
-            if (cameraStream) {
-              console.log('Stopping existing camera stream...');
-              cameraStream.getTracks().forEach(track => track.stop());
-              setCameraStream(null);
-            }
-            cameraInitializedRef.current = false;
-
-            // Clear existing video source safely
-            if (videoRef.current) {
-              try { videoRef.current.pause(); } catch {}
-              videoRef.current.srcObject = null;
-            }
-
-            // Wait a moment for cleanup
-            await new Promise(resolve => setTimeout(resolve, 200));
-            
-            const constraints = {
-              video: {
-                width: { ideal: 1280 },
-                height: { ideal: 720 },
-                focusMode: 'continuous', // Add focus mode for better focus control
-                facingMode: 'environment' // Use back camera for AR
-              },
-              audio: false
-            };
-
-            console.log('Requesting new camera stream...');
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            console.log('New camera stream obtained:', stream);
-            
-            setCameraStream(stream);
-            cameraInitializedRef.current = true;
-            
-            if (videoRef.current) {
-              console.log('Setting new video source...');
-              attachStreamAndAutoplay(stream);
-            }
-          } catch (err: any) {
-            console.error('Camera restart error:', err);
-            setCameraError(`Failed to restart camera: ${err.message || 'Please allow camera access'}`);
-            setCameraLoading(false);
-            setCameraInitializing(false);
-          }
-        }, [cameraStream, cameraInitializing, attachStreamAndAutoplay]);
-
-        // Handle coin collection
-        const handleCoinCollect = useCallback(async (coin: CoinResponse) => {
-          if (collectedCoins.has(coin.id)) return;
+          setCollectedCoins(prev => new Set([...prev, coin.id]));
+          setScore(prev => prev + 1);
+          console.log(`Collected ${coin.symbol}!`);
           
-          try {
-            const response = await collectCoinPublic(coin.id);
-            if (response.success) {
-              setCollectedCoins(prev => new Set([...prev, coin.id]));
-              setScore(prev => prev + 1);
-              console.log(`Collected ${coin.symbol}! Score: ${score + 1}`);
-            } else {
-              console.error('Failed to collect coin:', response.error);
-            }
-          } catch (err) {
-            console.error('Error collecting coin:', err);
-          }
-        }, [collectedCoins, score]);
+          // Small delay between collections for better UX
+          await new Promise(resolve => setTimeout(resolve, 300));
+        } catch (err) {
+          console.error(`Error collecting coin ${coin.id}:`, err);
+        }
+      }
+    }
+  }, [coins, collectedCoins, onCollectCoin]);
 
-        // Initial load (once) - remove startCamera dependency to prevent loops
-        useEffect(() => {
-          loadCoins();
-        }, [loadCoins]);
+  // Initial load (once) - remove startCamera dependency to prevent loops
+  useEffect(() => {
+    loadCoins();
+  }, [loadCoins]);
 
-        // Initialize camera only once on mount
-        useEffect(() => {
-          let mounted = true;
-          let cleanupFunction: (() => void) | undefined;
-          
-          const initCamera = async () => {
-            if (!mounted || cameraInitializing || cameraStream || cameraInitializedRef.current) return;
-            
-            try {
-              setCameraInitializing(true);
-              setCameraError(null);
-              setCameraLoading(true);
-              
-              console.log('Initializing camera...');
-              
-              const constraints = {
-                video: {
-                  width: { ideal: 1280 },
-                  height: { ideal: 720 },
-                  focusMode: 'continuous', // Add focus mode for better focus control
-                  facingMode: 'environment' // Use back camera for AR
-                },
-                audio: false
-              };
+  // Update collected coins when external prop changes
+  useEffect(() => {
+    if (collectedCoinIds) {
+      setCollectedCoins(collectedCoinIds);
+    }
+  }, [collectedCoinIds]);
 
-              const stream = await navigator.mediaDevices.getUserMedia(constraints);
-              console.log('Camera stream obtained:', stream);
-              
-              if (!mounted) {
-                stream.getTracks().forEach(track => track.stop());
-                return;
-              }
-              
-              setCameraStream(stream);
-              cameraInitializedRef.current = true;
-              
-              if (videoRef.current) {
-                console.log('Setting video source...');
-                cleanupFunction = attachStreamAndAutoplay(stream, () => {
-                  if (!mounted) return;
-                  console.log('Video playing successfully');
-                });
-              }
-            } catch (err: any) {
-              if (mounted) {
-                console.error('Camera error:', err);
-                setCameraError(`Camera access failed: ${err.message || 'Please allow camera access'}`);
-                setCameraLoading(false);
-                setCameraInitializing(false);
-              }
-            }
-          };
+  // Initialize camera only once on mount
+  useEffect(() => {
+    let mounted = true;
+    let cleanupFunction: (() => void) | undefined;
+    
+    const initCamera = async () => {
+      if (!mounted || cameraInitializing || cameraStream || cameraInitializedRef.current) return;
+      
+      try {
+        setCameraInitializing(true);
+        setCameraError(null);
+        setCameraLoading(true);
+        
+        console.log('Initializing camera...');
+        
+        const constraints = {
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            focusMode: 'continuous', // Add focus mode for better focus control
+            facingMode: 'environment' // Use back camera for AR
+          },
+          audio: false
+        };
 
-          initCamera();
-          
-          return () => {
-            mounted = false;
-            if (cleanupFunction) {
-              cleanupFunction();
-            }
-            if (cameraStream) {
-              cameraStream.getTracks().forEach(track => track.stop());
-            }
-            if (videoRef.current) {
-              videoRef.current.srcObject = null;
-            }
-          };
-        }, []); // Empty dependency array - only run once
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log('Camera stream obtained:', stream);
+        
+        if (!mounted) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+        
+        setCameraStream(stream);
+        cameraInitializedRef.current = true;
+        
+        if (videoRef.current) {
+          console.log('Setting video source...');
+          cleanupFunction = attachStreamAndAutoplay(stream, () => {
+            if (!mounted) return;
+            console.log('Video playing successfully');
+          });
+        }
+      } catch (err: any) {
+        if (mounted) {
+          console.error('Camera error:', err);
+          setCameraError(`Camera access failed: ${err.message || 'Please allow camera access'}`);
+          setCameraLoading(false);
+          setCameraInitializing(false);
+        }
+      }
+    };
+
+    initCamera();
+    
+    return () => {
+      mounted = false;
+      if (cleanupFunction) {
+        cleanupFunction();
+      }
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    };
+  }, []); // Empty dependency array - only run once
+
 
   if (loading) {
     return (
@@ -486,51 +543,51 @@ const SimpleAR: React.FC<SimpleARProps> = ({ onBack }) => {
 
   return (
     <div className="relative h-screen w-full bg-black">
-            {/* Camera Video */}
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{ zIndex: 1 }}
-            />
-            
-            {/* Camera Loading Overlay */}
-            {cameraLoading && (
-              <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center" style={{ zIndex: 3 }}>
-                <div className="text-center text-white">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto mb-4"></div>
-                  <p>Starting camera...</p>
-                </div>
-              </div>
-            )}
+      {/* Camera Video */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ zIndex: 1 }}
+      />
+      
+      {/* Camera Loading Overlay */}
+      {cameraLoading && (
+        <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center" style={{ zIndex: 3 }}>
+          <div className="text-center text-white">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto mb-4"></div>
+            <p>Starting camera...</p>
+          </div>
+        </div>
+      )}
 
-            {/* User gesture fallback */}
-            {needsUserGesture && (
-              <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center" style={{ zIndex: 4 }}>
-                <div className="text-center text-white space-y-3">
-                  <p className="text-sm opacity-80">Tap to enable camera</p>
-                  <button
-                    onClick={() => {
-                      const v = videoRef.current;
-                      if (!v) return;
-                      try { v.muted = true; /* ensure autoplay allowed */ } catch {}
-                      const p = v.play();
-                      if (p && typeof p.then === 'function') {
-                        p.then(() => setNeedsUserGesture(false))
-                         .catch(() => {/* keep overlay */});
-                      } else {
-                        setNeedsUserGesture(false);
-                      }
-                    }}
-                    className="px-5 py-2 bg-yellow-500 text-black rounded-lg shadow hover:bg-yellow-400 active:scale-95 transition"
-                  >
-                    Enable Camera
-                  </button>
-                </div>
-              </div>
-            )}
+      {/* User gesture fallback */}
+      {needsUserGesture && (
+        <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center" style={{ zIndex: 4 }}>
+          <div className="text-center text-white space-y-3">
+            <p className="text-sm opacity-80">Tap to enable camera</p>
+            <button
+              onClick={() => {
+                const v = videoRef.current;
+                if (!v) return;
+                try { v.muted = true; /* ensure autoplay allowed */ } catch {}
+                const p = v.play();
+                if (p && typeof p.then === 'function') {
+                  p.then(() => setNeedsUserGesture(false))
+                   .catch(() => {/* keep overlay */});
+                } else {
+                  setNeedsUserGesture(false);
+                }
+              }}
+              className="px-5 py-2 bg-yellow-500 text-black rounded-lg shadow hover:bg-yellow-400 active:scale-95 transition"
+            >
+              Enable Camera
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Controls */}
       <div className="absolute top-4 left-4 z-10 flex gap-2">
@@ -543,13 +600,22 @@ const SimpleAR: React.FC<SimpleARProps> = ({ onBack }) => {
           </button>
         )}
         
-              <button
-                onClick={startCamera}
-                disabled={cameraLoading || cameraInitializing}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {cameraInitializing ? '⚙️ Initializing...' : cameraLoading ? '🔄 Starting...' : '📷 Restart Camera'}
-              </button>
+        <button
+          onClick={startCamera}
+          disabled={cameraLoading || cameraInitializing}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {cameraInitializing ? '⚙️ Initializing...' : cameraLoading ? '🔄 Starting...' : '📷 Restart Camera'}
+        </button>
+
+        {/* Manual collect all button */}
+        <button
+          onClick={collectAllCoins}
+          disabled={collectedCoins.size === coins.length}
+          className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          💰 Collect All
+        </button>
       </div>
 
       {/* Score */}
@@ -560,28 +626,28 @@ const SimpleAR: React.FC<SimpleARProps> = ({ onBack }) => {
         </div>
       </div>
 
-            {/* Camera Error */}
-            {cameraError && (
-              <div className="absolute top-20 left-4 right-4 z-10">
-                <div className="bg-red-900 bg-opacity-80 text-red-100 p-4 rounded-lg">
-                  <p className="text-sm">{cameraError}</p>
-                  <button
-                    onClick={() => setCameraError(null)}
-                    className="mt-2 px-3 py-1 bg-red-700 text-white rounded text-xs hover:bg-red-600"
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              </div>
-            )}
+      {/* Camera Error */}
+      {cameraError && (
+        <div className="absolute top-20 left-4 right-4 z-10">
+          <div className="bg-red-900 bg-opacity-80 text-red-100 p-4 rounded-lg">
+            <p className="text-sm">{cameraError}</p>
+            <button
+              onClick={() => setCameraError(null)}
+              className="mt-2 px-3 py-1 bg-red-700 text-white rounded text-xs hover:bg-red-600"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
-            {/* Debug Info */}
-            <div className="absolute bottom-4 left-4 z-10 text-white text-xs bg-black bg-opacity-50 p-2 rounded">
-              <p>Camera: {cameraStream ? 'Connected' : 'Not connected'}</p>
-              <p>Loading: {cameraLoading ? 'Yes' : 'No'}</p>
-              <p>Initializing: {cameraInitializing ? 'Yes' : 'No'}</p>
-              <p>Video element: {videoRef.current ? 'Ready' : 'Not ready'}</p>
-            </div>
+      {/* Debug Info */}
+      <div className="absolute bottom-4 left-4 z-10 text-white text-xs bg-black bg-opacity-50 p-2 rounded">
+        <p>Camera: {cameraStream ? 'Connected' : 'Not connected'}</p>
+        <p>Loading: {cameraLoading ? 'Yes' : 'No'}</p>
+        <p>Initializing: {cameraInitializing ? 'Yes' : 'No'}</p>
+        <p>Video element: {videoRef.current ? 'Ready' : 'Not ready'}</p>
+      </div>
 
       {/* 3D Scene */}
       <Canvas
@@ -614,7 +680,7 @@ const SimpleAR: React.FC<SimpleARProps> = ({ onBack }) => {
       {score > 0 && (
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
           <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg animate-bounce">
-            <p className="text-lg font-semibold">🎉 +1 Coin Collected!</p>
+            <p className="text-lg font-semibold">🎉 +{collectedCoins.size} Coins Collected!</p>
           </div>
         </div>
       )}
