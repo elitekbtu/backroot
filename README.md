@@ -70,7 +70,7 @@
 
 1. **Клонирование репозитория**
 ```bash
-git clone https://github.com/your-username/backroot.git
+git clone https://github.com/elitekbtu/backroot.git
 cd backroot
 ```
 
