@@ -19,3 +19,4 @@ pydub
 soundfile
 numpy
 ffmpeg-python
+pytz
