@@ -13,7 +13,6 @@ interface SimpleARProps {
   collectingCoinId?: number | null;
 }
 
-// GLB Model Component
 const GLBCoin: React.FC<{
   coin: CoinResponse;
   position: [number, number, number];
@@ -22,17 +21,12 @@ const GLBCoin: React.FC<{
 }> = ({ coin, position, onCollect, isCollected }) => {
   const meshRef = useRef<Group>(null);
   const [hovered, setHovered] = useState(false);
-
-  // Load GLB model
   const gltf = useGLTF(coin.ar_model_url || '/coin.glb');
 
   useFrame((_, delta) => {
     if (!meshRef.current || isCollected) return;
     
-    // Rotate the coin
     meshRef.current.rotation.y += delta * 0.5;
-    
-    // Hover effect
     const scale = hovered ? 1.2 : (coin.ar_scale || 1);
     meshRef.current.scale.setScalar(scale);
   });
@@ -51,7 +45,7 @@ const GLBCoin: React.FC<{
       
       {hovered && (
         <Html position={[0, 1, 0]} center>
-          <div className="bg-black bg-opacity-80 text-white px-3 py-1 rounded text-sm">
+          <div className="bg-black bg-opacity-80 text-white px-2 py-1 rounded text-xs">
             Click to collect {coin.symbol}
           </div>
         </Html>
@@ -74,7 +68,6 @@ const FallbackCoin: React.FC<{
     if (!meshRef.current || isCollected) return;
     
     meshRef.current.rotation.y += delta * 0.5;
-    
     const scale = hovered ? 1.2 : (coin.ar_scale || 1);
     meshRef.current.scale.setScalar(scale);
   });
@@ -94,7 +87,7 @@ const FallbackCoin: React.FC<{
       
       {hovered && (
         <Html position={[0, 1, 0]} center>
-          <div className="bg-black bg-opacity-80 text-white px-3 py-1 rounded text-sm">
+          <div className="bg-black bg-opacity-80 text-white px-2 py-1 rounded text-xs">
             Click to collect {coin.symbol}
           </div>
         </Html>
@@ -103,25 +96,21 @@ const FallbackCoin: React.FC<{
   );
 };
 
-// Coin Component with Error Boundary
+// Coin Component
 const Coin: React.FC<{
   coin: CoinResponse;
   position: [number, number, number];
   onCollect: () => void;
   isCollected: boolean;
 }> = ({ coin, position, onCollect, isCollected }) => {
-  if (coin.ar_model_url) {
-    return (
-      <GLBCoin
-        coin={coin}
-        position={position}
-        onCollect={onCollect}
-        isCollected={isCollected}
-      />
-    );
-  }
-  
-  return (
+  return coin.ar_model_url ? (
+    <GLBCoin
+      coin={coin}
+      position={position}
+      onCollect={onCollect}
+      isCollected={isCollected}
+    />
+  ) : (
     <FallbackCoin
       coin={coin}
       position={position}
@@ -140,12 +129,10 @@ const ARScene: React.FC<{
   const { camera } = useThree();
 
   useEffect(() => {
-    // Set camera position for AR
     camera.position.set(0, 0, 0);
     camera.lookAt(0, 0, -1);
   }, [camera]);
 
-  // Generate positions for coins
   const coinPositions: [number, number, number][] = coins.map((_, index) => [
     (Math.random() - 0.5) * 10,
     0,
@@ -154,11 +141,9 @@ const ARScene: React.FC<{
 
   return (
     <>
-      {/* Lighting */}
       <ambientLight intensity={0.6} />
       <directionalLight position={[10, 10, 5]} intensity={1} />
       
-      {/* Coins */}
       {coins.map((coin, index) => (
         <Coin
           key={coin.id}
@@ -169,10 +154,9 @@ const ARScene: React.FC<{
         />
       ))}
       
-      {/* Instructions */}
       <Html position={[0, -2, 0]} center>
-        <div className="bg-black bg-opacity-70 text-white px-4 py-2 rounded text-center">
-          <p className="text-sm">Look around to find coins • Tap coins to collect them</p>
+        <div className="bg-black bg-opacity-70 text-white px-3 py-1 rounded text-xs text-center">
+          <p>Look around to find coins • Tap coins to collect them</p>
         </div>
       </Html>
     </>
@@ -199,19 +183,16 @@ const SimpleAR: React.FC<SimpleARProps> = ({
   const playRequestedRef = useRef(false);
   const cameraInitializedRef = useRef(false);
 
-  // Attach stream to video and start playback robustly
   const attachStreamAndAutoplay = useCallback((stream: MediaStream, onDone?: () => void) => {
     const video = videoRef.current;
     if (!video) return;
 
-    // Clean up any existing event listeners first
     const cleanup = () => {
       video.removeEventListener('canplay', onCanPlay);
       video.removeEventListener('loadeddata', onLoadedData);
       video.removeEventListener('playing', onPlaying);
     };
 
-    // Ensure autoplay-friendly settings
     try { video.pause(); } catch {}
     video.muted = true;
     // @ts-ignore
@@ -223,7 +204,7 @@ const SimpleAR: React.FC<SimpleARProps> = ({
 
     playRequestedRef.current = false;
     let attempts = 0;
-    const maxAttempts = 10; // ~2s with 200ms interval
+    const maxAttempts = 10;
 
     const tryPlay = () => {
       if (!videoRef.current || playRequestedRef.current) return;
@@ -238,9 +219,9 @@ const SimpleAR: React.FC<SimpleARProps> = ({
           onDone && onDone();
         }).catch((error: any) => {
           if (error?.name !== 'AbortError') {
-            console.warn('video.play() error, will retry:', error?.message || error);
+            console.warn('video.play() error:', error?.message || error);
           }
-          playRequestedRef.current = false; // allow retry
+          playRequestedRef.current = false;
           if (attempts++ < maxAttempts) {
             setTimeout(tryPlay, 200);
           } else {
@@ -279,19 +260,16 @@ const SimpleAR: React.FC<SimpleARProps> = ({
     video.addEventListener('loadeddata', onLoadedData, { once: true });
     video.addEventListener('playing', onPlaying, { once: true });
 
-    // Fallback trigger in case events are delayed
     const fallbackTimeout = setTimeout(() => {
       if (!playRequestedRef.current) tryPlay();
     }, 300);
 
-    // Return cleanup function
     return () => {
       clearTimeout(fallbackTimeout);
       cleanup();
     };
   }, [videoRef]);
 
-  // Load coins
   const loadCoins = useCallback(async () => {
     try {
       setLoading(true);
@@ -311,57 +289,43 @@ const SimpleAR: React.FC<SimpleARProps> = ({
     }
   }, []);
 
-  // Manual camera restart function
   const startCamera = useCallback(async () => {
-    // Prevent multiple simultaneous camera initialization
-    if (cameraInitializing) {
-      console.log('Camera already initializing, skipping...');
-      return;
-    }
+    if (cameraInitializing) return;
 
     try {
       setCameraInitializing(true);
       setCameraError(null);
       setCameraLoading(true);
       
-      console.log('Restarting camera...');
-      
-      // Stop existing stream first
       if (cameraStream) {
-        console.log('Stopping existing camera stream...');
         cameraStream.getTracks().forEach(track => track.stop());
         setCameraStream(null);
       }
       cameraInitializedRef.current = false;
 
-      // Clear existing video source safely
       if (videoRef.current) {
         try { videoRef.current.pause(); } catch {}
         videoRef.current.srcObject = null;
       }
 
-      // Wait a moment for cleanup
       await new Promise(resolve => setTimeout(resolve, 200));
       
       const constraints = {
         video: {
           width: { ideal: 1280 },
           height: { ideal: 720 },
-          focusMode: 'continuous', // Add focus mode for better focus control
-          facingMode: 'environment' // Use back camera for AR
+          focusMode: 'continuous',
+          facingMode: 'environment'
         },
         audio: false
       };
 
-      console.log('Requesting new camera stream...');
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      console.log('New camera stream obtained:', stream);
       
       setCameraStream(stream);
       cameraInitializedRef.current = true;
       
       if (videoRef.current) {
-        console.log('Setting new video source...');
         attachStreamAndAutoplay(stream);
       }
     } catch (err: any) {
@@ -372,17 +336,14 @@ const SimpleAR: React.FC<SimpleARProps> = ({
     }
   }, [cameraStream, cameraInitializing, attachStreamAndAutoplay]);
 
-  // Handle coin collection
   const handleCoinCollect = useCallback(async (coin: CoinResponse) => {
     if (collectedCoins.has(coin.id) || collectingCoinId === coin.id) return;
     
-    // Use external handler if provided, otherwise use internal logic
     if (onCollectCoin) {
       try {
         await onCollectCoin(coin.id);
         setCollectedCoins(prev => new Set([...prev, coin.id]));
         setScore(prev => prev + 1);
-        console.log(`Collected ${coin.symbol}! Score: ${score + 1}`);
       } catch (err) {
         console.error('Error collecting coin:', err);
       }
@@ -392,7 +353,6 @@ const SimpleAR: React.FC<SimpleARProps> = ({
         if (response.success) {
           setCollectedCoins(prev => new Set([...prev, coin.id]));
           setScore(prev => prev + 1);
-          console.log(`Collected ${coin.symbol}! Score: ${score + 1}`);
         } else {
           console.error('Failed to collect coin:', response.error);
         }
@@ -400,15 +360,10 @@ const SimpleAR: React.FC<SimpleARProps> = ({
         console.error('Error collecting coin:', err);
       }
     }
-  }, [collectedCoins, score, onCollectCoin, collectingCoinId]);
+  }, [collectedCoins, onCollectCoin, collectingCoinId]);
 
-  // Manual collect all coins
   const collectAllCoins = useCallback(async () => {
-    if (coins.length === 0 || collectedCoins.size === coins.length) {
-      return;
-    }
-
-    console.log('Collecting all coins...');
+    if (coins.length === 0 || collectedCoins.size === coins.length) return;
 
     for (const coin of coins) {
       if (!collectedCoins.has(coin.id)) {
@@ -420,9 +375,6 @@ const SimpleAR: React.FC<SimpleARProps> = ({
           }
           setCollectedCoins(prev => new Set([...prev, coin.id]));
           setScore(prev => prev + 1);
-          console.log(`Collected ${coin.symbol}!`);
-          
-          // Small delay between collections for better UX
           await new Promise(resolve => setTimeout(resolve, 300));
         } catch (err) {
           console.error(`Error collecting coin ${coin.id}:`, err);
@@ -431,19 +383,16 @@ const SimpleAR: React.FC<SimpleARProps> = ({
     }
   }, [coins, collectedCoins, onCollectCoin]);
 
-  // Initial load (once) - remove startCamera dependency to prevent loops
   useEffect(() => {
     loadCoins();
   }, [loadCoins]);
 
-  // Update collected coins when external prop changes
   useEffect(() => {
     if (collectedCoinIds) {
       setCollectedCoins(collectedCoinIds);
     }
   }, [collectedCoinIds]);
 
-  // Initialize camera only once on mount
   useEffect(() => {
     let mounted = true;
     let cleanupFunction: (() => void) | undefined;
@@ -456,20 +405,17 @@ const SimpleAR: React.FC<SimpleARProps> = ({
         setCameraError(null);
         setCameraLoading(true);
         
-        console.log('Initializing camera...');
-        
         const constraints = {
           video: {
             width: { ideal: 1280 },
             height: { ideal: 720 },
-            focusMode: 'continuous', // Add focus mode for better focus control
-            facingMode: 'environment' // Use back camera for AR
+            focusMode: 'continuous',
+            facingMode: 'environment'
           },
           audio: false
         };
 
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        console.log('Camera stream obtained:', stream);
         
         if (!mounted) {
           stream.getTracks().forEach(track => track.stop());
@@ -480,10 +426,8 @@ const SimpleAR: React.FC<SimpleARProps> = ({
         cameraInitializedRef.current = true;
         
         if (videoRef.current) {
-          console.log('Setting video source...');
           cleanupFunction = attachStreamAndAutoplay(stream, () => {
             if (!mounted) return;
-            console.log('Video playing successfully');
           });
         }
       } catch (err: any) {
@@ -510,15 +454,14 @@ const SimpleAR: React.FC<SimpleARProps> = ({
         videoRef.current.srcObject = null;
       }
     };
-  }, []); // Empty dependency array - only run once
-
+  }, []);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-black text-white">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto mb-4"></div>
-          <p>Loading AR experience...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mx-auto mb-2"></div>
+          <p className="text-sm">Loading AR experience...</p>
         </div>
       </div>
     );
@@ -528,11 +471,11 @@ const SimpleAR: React.FC<SimpleARProps> = ({
     return (
       <div className="flex items-center justify-center h-screen bg-black text-white">
         <div className="text-center">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <p className="text-xl mb-4">{error}</p>
+          <div className="text-red-500 text-4xl mb-2">⚠️</div>
+          <p className="text-sm mb-3">{error}</p>
           <button
             onClick={loadCoins}
-            className="px-6 py-3 bg-yellow-500 text-black rounded-lg hover:bg-yellow-600 transition-colors"
+            className="px-4 py-2 bg-yellow-500 text-black rounded text-sm hover:bg-yellow-600 transition-colors"
           >
             Try Again
           </button>
@@ -543,7 +486,6 @@ const SimpleAR: React.FC<SimpleARProps> = ({
 
   return (
     <div className="relative h-screen w-full bg-black">
-      {/* Camera Video */}
       <video
         ref={videoRef}
         autoPlay
@@ -553,35 +495,33 @@ const SimpleAR: React.FC<SimpleARProps> = ({
         style={{ zIndex: 1 }}
       />
       
-      {/* Camera Loading Overlay */}
       {cameraLoading && (
         <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center" style={{ zIndex: 3 }}>
           <div className="text-center text-white">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto mb-4"></div>
-            <p>Starting camera...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mx-auto mb-2"></div>
+            <p className="text-sm">Starting camera...</p>
           </div>
         </div>
       )}
 
-      {/* User gesture fallback */}
       {needsUserGesture && (
         <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center" style={{ zIndex: 4 }}>
-          <div className="text-center text-white space-y-3">
-            <p className="text-sm opacity-80">Tap to enable camera</p>
+          <div className="text-center text-white space-y-2">
+            <p className="text-xs opacity-80">Tap to enable camera</p>
             <button
               onClick={() => {
                 const v = videoRef.current;
                 if (!v) return;
-                try { v.muted = true; /* ensure autoplay allowed */ } catch {}
+                try { v.muted = true; } catch {}
                 const p = v.play();
                 if (p && typeof p.then === 'function') {
                   p.then(() => setNeedsUserGesture(false))
-                   .catch(() => {/* keep overlay */});
+                   .catch(() => {});
                 } else {
                   setNeedsUserGesture(false);
                 }
               }}
-              className="px-5 py-2 bg-yellow-500 text-black rounded-lg shadow hover:bg-yellow-400 active:scale-95 transition"
+              className="px-3 py-1 bg-yellow-500 text-black rounded text-sm hover:bg-yellow-400 transition"
             >
               Enable Camera
             </button>
@@ -589,12 +529,11 @@ const SimpleAR: React.FC<SimpleARProps> = ({
         </div>
       )}
 
-      {/* Controls */}
-      <div className="absolute top-4 left-4 z-10 flex gap-2">
+      <div className="absolute top-3 left-3 z-10 flex gap-2">
         {onBack && (
           <button
             onClick={onBack}
-            className="px-4 py-2 bg-black bg-opacity-50 text-white rounded-lg hover:bg-opacity-70 transition-all"
+            className="px-3 py-1 bg-black bg-opacity-50 text-white rounded text-sm hover:bg-opacity-70 transition-all"
           >
             ← Back
           </button>
@@ -603,37 +542,34 @@ const SimpleAR: React.FC<SimpleARProps> = ({
         <button
           onClick={startCamera}
           disabled={cameraLoading || cameraInitializing}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-all disabled:opacity-50"
         >
-          {cameraInitializing ? '⚙️ Initializing...' : cameraLoading ? '🔄 Starting...' : '📷 Restart Camera'}
+          {cameraInitializing ? '⚙️' : cameraLoading ? '🔄' : '📷'}
         </button>
 
-        {/* Manual collect all button */}
         <button
           onClick={collectAllCoins}
           disabled={collectedCoins.size === coins.length}
-          className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-all disabled:opacity-50"
         >
-          💰 Collect All
+          💰 All
         </button>
       </div>
 
-      {/* Score */}
-      <div className="absolute top-4 right-4 z-10">
-        <div className="bg-black bg-opacity-50 text-white px-4 py-2 rounded-lg">
-          <p className="text-lg font-semibold">Score: {score}</p>
-          <p className="text-sm">Collected: {collectedCoins.size}/{coins.length}</p>
+      <div className="absolute top-3 right-3 z-10">
+        <div className="bg-black bg-opacity-50 text-white px-3 py-1 rounded text-sm">
+          <p>Score: {score}</p>
+          <p className="text-xs">{collectedCoins.size}/{coins.length}</p>
         </div>
       </div>
 
-      {/* Camera Error */}
       {cameraError && (
-        <div className="absolute top-20 left-4 right-4 z-10">
-          <div className="bg-red-900 bg-opacity-80 text-red-100 p-4 rounded-lg">
-            <p className="text-sm">{cameraError}</p>
+        <div className="absolute top-14 left-3 right-3 z-10">
+          <div className="bg-red-900 bg-opacity-80 text-red-100 p-2 rounded text-xs">
+            <p>{cameraError}</p>
             <button
               onClick={() => setCameraError(null)}
-              className="mt-2 px-3 py-1 bg-red-700 text-white rounded text-xs hover:bg-red-600"
+              className="mt-1 px-2 py-0.5 bg-red-700 text-white rounded text-xs hover:bg-red-600"
             >
               Dismiss
             </button>
@@ -641,15 +577,6 @@ const SimpleAR: React.FC<SimpleARProps> = ({
         </div>
       )}
 
-      {/* Debug Info */}
-      <div className="absolute bottom-4 left-4 z-10 text-white text-xs bg-black bg-opacity-50 p-2 rounded">
-        <p>Camera: {cameraStream ? 'Connected' : 'Not connected'}</p>
-        <p>Loading: {cameraLoading ? 'Yes' : 'No'}</p>
-        <p>Initializing: {cameraInitializing ? 'Yes' : 'No'}</p>
-        <p>Video element: {videoRef.current ? 'Ready' : 'Not ready'}</p>
-      </div>
-
-      {/* 3D Scene */}
       <Canvas
         camera={{ position: [0, 0, 0], fov: 75 }}
         style={{
@@ -676,11 +603,10 @@ const SimpleAR: React.FC<SimpleARProps> = ({
         />
       </Canvas>
 
-      {/* Collection Feedback */}
       {score > 0 && (
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
-          <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg animate-bounce">
-            <p className="text-lg font-semibold">🎉 +{collectedCoins.size} Coins Collected!</p>
+        <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 z-10">
+          <div className="bg-green-500 text-white px-4 py-2 rounded text-sm shadow-lg animate-bounce">
+            <p>🎉 +{collectedCoins.size} Collected!</p>
           </div>
         </div>
       )}

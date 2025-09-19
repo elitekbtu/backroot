@@ -56,6 +56,26 @@ const POIMap: React.FC<POIMapProps> = ({ userLocation, pois, onPOIClick, onMapRe
               featureType: 'poi',
               elementType: 'labels',
               stylers: [{ visibility: 'off' }]
+            },
+            {
+              featureType: 'all',
+              elementType: 'geometry.fill',
+              stylers: [{ color: '#f5f5f5' }]
+            },
+            {
+              featureType: 'water',
+              elementType: 'geometry.fill',
+              stylers: [{ color: '#e5e5e5' }]
+            },
+            {
+              featureType: 'road',
+              elementType: 'geometry',
+              stylers: [{ color: '#ffffff' }]
+            },
+            {
+              featureType: 'road',
+              elementType: 'labels.text.fill',
+              stylers: [{ color: '#666666' }]
             }
           ]
         });
@@ -90,11 +110,11 @@ const POIMap: React.FC<POIMapProps> = ({ userLocation, pois, onPOIClick, onMapRe
     const userMarker = new google.maps.Marker({
       position: { lat: userLocation.lat, lng: userLocation.lng },
       map: mapInstanceRef.current,
-      title: 'Ваше местоположение',
+      title: 'Your location',
       icon: {
         path: google.maps.SymbolPath.CIRCLE,
         scale: 8,
-        fillColor: '#4285F4',
+        fillColor: '#000000',
         fillOpacity: 1,
         strokeColor: '#FFFFFF',
         strokeWeight: 2,
@@ -104,10 +124,10 @@ const POIMap: React.FC<POIMapProps> = ({ userLocation, pois, onPOIClick, onMapRe
 
     // Добавляем круг точности
     const accuracyCircle = new google.maps.Circle({
-      strokeColor: '#4285F4',
+      strokeColor: '#000000',
       strokeOpacity: 0.3,
       strokeWeight: 1,
-      fillColor: '#4285F4',
+      fillColor: '#000000',
       fillOpacity: 0.1,
       map: mapInstanceRef.current,
       center: { lat: userLocation.lat, lng: userLocation.lng },
@@ -142,7 +162,7 @@ const POIMap: React.FC<POIMapProps> = ({ userLocation, pois, onPOIClick, onMapRe
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
           scale: poi.collected ? 12 : 8,
-          fillColor: poi.collected ? '#10B981' : (poi.distance && poi.distance <= 50 ? '#F59E0B' : '#EF4444'),
+          fillColor: poi.collected ? '#000000' : (poi.distance && poi.distance <= 50 ? '#666666' : '#999999'),
           fillOpacity: 1,
           strokeColor: '#FFFFFF',
           strokeWeight: 2,
@@ -153,12 +173,12 @@ const POIMap: React.FC<POIMapProps> = ({ userLocation, pois, onPOIClick, onMapRe
       // Добавляем информационное окно
       const infoWindow = new google.maps.InfoWindow({
         content: `
-          <div class="p-2">
-            <h3 class="font-semibold text-gray-800">${poi.name}</h3>
-            <p class="text-sm text-gray-600">${poi.city}</p>
-            ${poi.distance ? `<p class="text-sm text-gray-500">Расстояние: ${Math.round(poi.distance)}м</p>` : ''}
-            ${poi.collected ? '<p class="text-green-600 font-medium">✅ Собрано</p>' : ''}
-            ${poi.distance && poi.distance <= 50 && !poi.collected ? '<p class="text-yellow-600 font-medium">Близко! +10 коинов</p>' : ''}
+          <div class="p-3 bg-white border border-gray-200 rounded-lg shadow-sm">
+            <h3 class="font-medium text-gray-900 text-sm">${poi.name}</h3>
+            <p class="text-xs text-gray-500 mt-1">${poi.city}</p>
+            ${poi.distance ? `<p class="text-xs text-gray-400 mt-1">Distance: ${Math.round(poi.distance)}m</p>` : ''}
+            ${poi.collected ? '<p class="text-xs text-gray-900 font-medium mt-1">✓ Collected</p>' : ''}
+            ${poi.distance && poi.distance <= 50 && !poi.collected ? '<p class="text-xs text-gray-600 font-medium mt-1">Close! +10 coins</p>' : ''}
           </div>
         `
       });
@@ -177,26 +197,26 @@ const POIMap: React.FC<POIMapProps> = ({ userLocation, pois, onPOIClick, onMapRe
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
         <div className="flex items-center">
-          <div className="text-red-600 mr-2">⚠️</div>
-          <div className="text-red-700">{error}</div>
+          <div className="text-red-500 mr-2">⚠️</div>
+          <div className="text-gray-900">{error}</div>
         </div>
-        <div className="mt-2 text-sm text-red-600">
-          Добавьте VITE_GOOGLE_MAPS_API_KEY в .env файл
+        <div className="mt-2 text-sm text-gray-500">
+          Add VITE_GOOGLE_MAPS_API_KEY to .env file
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-96 rounded-lg overflow-hidden shadow-lg">
+    <div className="w-full h-96 rounded-lg overflow-hidden border border-gray-200">
       <div ref={mapRef} className="w-full h-full" />
       {!isLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+        <div className="absolute inset-0 flex items-center justify-center bg-white">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-2"></div>
-            <div className="text-gray-600">Загрузка карты...</div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
+            <div className="text-gray-600">Loading map...</div>
           </div>
         </div>
       )}

@@ -27,7 +27,7 @@ const MainNavbar: React.FC = () => {
   ];
 
   return (
-    <nav className={`bg-white shadow-lg ${deviceInfo.isKiosk ? 'text-2xl' : ''}`}>
+    <nav className={`bg-white border-b border-gray-200 ${deviceInfo.isKiosk ? 'text-2xl' : ''}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className={`flex justify-between items-center ${
           deviceInfo.isKiosk ? 'h-20' : 
@@ -35,11 +35,11 @@ const MainNavbar: React.FC = () => {
         }`}>
           {/* Logo */}
           <div className="flex-shrink-0">
-            <Link to="/dashboard" className={`font-bold text-gray-800 ${
-              deviceInfo.isKiosk ? 'text-4xl' : 
+            <Link to="/dashboard" className={`font-medium text-gray-900 ${
+              deviceInfo.isKiosk ? 'text-3xl' : 
               deviceInfo.isMobile ? 'text-xl' : 'text-2xl'
             }`}>
-              BackRoot
+              Back<span className="font-normal">Root</span>
             </Link>
           </div>
           
@@ -50,7 +50,7 @@ const MainNavbar: React.FC = () => {
                 <Link 
                   key={item.path}
                   to={item.path} 
-                  className={`hover:text-gray-900 px-3 py-2 rounded-md font-medium transition-colors ${
+                  className={`hover:text-gray-900 px-3 py-2 rounded font-medium transition-colors ${
                     deviceInfo.isKiosk ? 'text-lg px-4 py-3' : 
                     deviceInfo.isMobile ? 'text-sm' : 'text-sm'
                   } ${isActive(item.path)}`}
@@ -67,7 +67,7 @@ const MainNavbar: React.FC = () => {
             
             <Link 
               to="/dashboard/settings" 
-              className={`hover:text-gray-900 px-3 py-2 rounded-md font-medium transition-colors ${
+              className={`hover:text-gray-900 px-3 py-2 rounded font-medium transition-colors ${
                 deviceInfo.isKiosk ? 'text-lg px-4 py-3' : 
                 deviceInfo.isMobile ? 'text-sm' : 'text-sm'
               } ${isActive('/dashboard/settings')}`}
@@ -76,7 +76,7 @@ const MainNavbar: React.FC = () => {
               Settings
             </Link>
             <button 
-              className={`bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium transition-colors ${
+              className={`bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-medium transition-colors ${
                 deviceInfo.isKiosk ? 'text-lg px-6 py-3' : 
                 deviceInfo.isMobile ? 'text-sm px-3 py-1' : 'text-sm'
               }`}
@@ -91,7 +91,7 @@ const MainNavbar: React.FC = () => {
           <div className="lg:hidden flex items-center">
             <button
               onClick={toggleMobileMenu}
-              className={`p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors ${
+              className={`p-2 rounded text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors ${
                 deviceInfo.isKiosk ? 'text-2xl p-3' : 
                 deviceInfo.isMobile ? 'text-lg' : 'text-xl'
               }`}
@@ -109,7 +109,7 @@ const MainNavbar: React.FC = () => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`block px-3 py-3 rounded-md font-medium transition-colors ${
+                  className={`block px-3 py-3 rounded font-medium transition-colors ${
                     deviceInfo.isKiosk ? 'text-xl' : 
                     deviceInfo.isMobile ? 'text-base' : 'text-base'
                   } ${isActive(item.path)}`}
@@ -125,7 +125,7 @@ const MainNavbar: React.FC = () => {
                 
                 <Link
                   to="/dashboard/settings"
-                  className={`block px-3 py-3 rounded-md font-medium transition-colors ${
+                  className={`block px-3 py-3 rounded font-medium transition-colors ${
                     deviceInfo.isKiosk ? 'text-xl' : 
                     deviceInfo.isMobile ? 'text-base' : 'text-base'
                   } ${isActive('/dashboard/settings')}`}
@@ -140,7 +140,7 @@ const MainNavbar: React.FC = () => {
                     logout();
                     setIsMobileMenuOpen(false);
                   }}
-                  className={`w-full text-left px-3 py-3 rounded-md font-medium transition-colors ${
+                  className={`w-full text-left px-3 py-3 rounded font-medium transition-colors ${
                     deviceInfo.isKiosk ? 'text-xl' : 
                     deviceInfo.isMobile ? 'text-base' : 'text-base'
                   } bg-red-600 text-white hover:bg-red-700`}
