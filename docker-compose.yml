@@ -31,13 +31,28 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "5173:80"
+      - "80:80"
       - "443:443"
     volumes:
       - ./ssl:/etc/ssl/certs:ro
       - ./ssl:/etc/ssl/private:ro
+      - certbot-etc:/etc/letsencrypt
+      - certbot-var:/var/lib/letsencrypt
+      - web-root:/var/www/html
     depends_on:
       - backend
 
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot
+    volumes:
+      - certbot-etc:/etc/letsencrypt
+      - certbot-var:/var/lib/letsencrypt
+      - web-root:/var/www/html
+    command: certonly --webroot --webroot-path=/var/www/html --email your-email@example.com --agree-tos --no-eff-email --keep-until-expiring -d theb2r.com -d www.theb2r.com
+
 volumes:
   postgres_data:
+  certbot-etc:
+  certbot-var:
+  web-root:
