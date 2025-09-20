@@ -146,10 +146,35 @@ export class V2VService {
       this._connectionState = 'connecting';
       this.onConnectionChange?.(this._connectionState);
 
-      // Correct WebSocket URL based on backend structure
-      const wsBaseUrl = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000';
+      // Smart WebSocket URL detection based on environment
+      const getWebSocketUrl = (): string => {
+        // If environment variable is explicitly set, use it
+        if (import.meta.env.VITE_WS_BASE_URL) {
+          return import.meta.env.VITE_WS_BASE_URL;
+        }
+        
+        // Auto-detect based on current location
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        
+        // For production domains, always use secure WebSocket
+        if (host.includes('theb2r.com')) {
+          return 'wss://theb2r.com';
+        }
+        
+        // For localhost development
+        if (host.includes('localhost') || host.includes('127.0.0.1')) {
+          return 'ws://localhost:8000';
+        }
+        
+        // Default fallback using current host
+        return `${protocol}//${host}`;
+      };
+
+      const wsBaseUrl = getWebSocketUrl();
       const wsUrl = `${wsBaseUrl}/api/v1/voice/ws/v2v/${userId}`;
       
+      console.log('Connecting to WebSocket:', wsUrl);
       this.websocket = new WebSocket(wsUrl);
 
       this.websocket.onopen = () => {
