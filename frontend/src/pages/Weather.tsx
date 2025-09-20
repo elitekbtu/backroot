@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { weatherService } from '../api/weather';
 import { useDeviceDetection } from '../hooks/useDeviceDetection';
+import { GlowingEffect } from '@/components/ui/glowing-effect';
 import type { WeatherData } from '../types/weather';
 
 const Weather: React.FC = () => {
@@ -106,7 +107,7 @@ const Weather: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className={`animate-spin rounded-full border-b-2 border-gray-900 mx-auto mb-4 ${
             deviceInfo.isKiosk ? 'h-16 w-16' : 
@@ -125,7 +126,7 @@ const Weather: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
+      <div className="min-h-screen flex items-center justify-center px-4">
         <div className={`w-full text-center ${
           deviceInfo.isKiosk ? 'max-w-lg' : 'max-w-md'
         }`}>
@@ -163,7 +164,7 @@ const Weather: React.FC = () => {
 
   if (!weatherData) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className={`text-gray-600 ${
           deviceInfo.isKiosk ? 'text-xl' : 
           deviceInfo.isMobile ? 'text-sm' : 'text-base'
@@ -175,7 +176,7 @@ const Weather: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="text-center mb-8">
@@ -211,7 +212,7 @@ const Weather: React.FC = () => {
         </div>
 
         {/* Current Weather */}
-        <div className={`bg-white border border-gray-200 rounded-lg mb-8 ${
+        <div className={`bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg mb-8 ${
           deviceInfo.isKiosk ? 'p-8' : 
           deviceInfo.isMobile ? 'p-4' : 'p-6'
         }`}>
@@ -262,83 +263,151 @@ const Weather: React.FC = () => {
               deviceInfo.isKiosk ? 'grid-cols-4' : 
               deviceInfo.isMobile ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4'
             }`}>
-              <div className={`text-center border border-gray-200 rounded-lg ${
+              <div className={`group relative rounded-2xl ${
                 deviceInfo.isKiosk ? 'p-6' : 
                 deviceInfo.isMobile ? 'p-3' : 'p-4'
               }`}>
-                <div className={`mb-2 ${
-                  deviceInfo.isKiosk ? 'text-3xl' : 
-                  deviceInfo.isMobile ? 'text-xl' : 'text-2xl'
-                }`}>💧</div>
-                <div className={`text-gray-600 ${
-                  deviceInfo.isKiosk ? 'text-base' : 
-                  deviceInfo.isMobile ? 'text-xs' : 'text-sm'
-                }`}>Humidity</div>
-                <div className={`font-medium text-gray-900 ${
-                  deviceInfo.isKiosk ? 'text-lg' : 
-                  deviceInfo.isMobile ? 'text-sm' : 'text-base'
-                }`}>{weatherData.current.humidity}%</div>
+                <div className="relative h-full rounded-2xl border border-border/50 p-2">
+                  <GlowingEffect
+                    spread={30}
+                    glow={true}
+                    disabled={false}
+                    proximity={80}
+                    inactiveZone={0.3}
+                    borderWidth={2}
+                    movementDuration={1.5}
+                  />
+                  <div className="relative flex h-full flex-col justify-between gap-4 overflow-hidden rounded-xl border border-border/30 bg-card/20 p-4 shadow-sm backdrop-blur-sm group-hover:bg-card/40 transition-all duration-300">
+                    <div className="w-fit rounded-lg border border-border/50 bg-muted/50 p-3 group-hover:scale-110 transition-transform duration-300">
+                      <div className={`${
+                        deviceInfo.isKiosk ? 'text-3xl' : 
+                        deviceInfo.isMobile ? 'text-xl' : 'text-2xl'
+                      }`}>💧</div>
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className={`font-semibold text-card-foreground ${
+                        deviceInfo.isKiosk ? 'text-lg' : 
+                        deviceInfo.isMobile ? 'text-sm' : 'text-base'
+                      }`}>Humidity</h3>
+                      <p className={`text-muted-foreground leading-relaxed ${
+                        deviceInfo.isKiosk ? 'text-base' : 
+                        deviceInfo.isMobile ? 'text-xs' : 'text-sm'
+                      }`}>{weatherData.current.humidity}%</p>
+                    </div>
+                  </div>
+                </div>
               </div>
               
-              <div className={`text-center border border-gray-200 rounded-lg ${
+              <div className={`group relative rounded-2xl ${
                 deviceInfo.isKiosk ? 'p-6' : 
                 deviceInfo.isMobile ? 'p-3' : 'p-4'
               }`}>
-                <div className={`mb-2 ${
-                  deviceInfo.isKiosk ? 'text-3xl' : 
-                  deviceInfo.isMobile ? 'text-xl' : 'text-2xl'
-                }`}>🌬️</div>
-                <div className={`text-gray-600 ${
-                  deviceInfo.isKiosk ? 'text-base' : 
-                  deviceInfo.isMobile ? 'text-xs' : 'text-sm'
-                }`}>Wind</div>
-                <div className={`font-medium text-gray-900 ${
-                  deviceInfo.isKiosk ? 'text-lg' : 
-                  deviceInfo.isMobile ? 'text-sm' : 'text-base'
-                }`}>{weatherData.current.windSpeed} m/s</div>
+                <div className="relative h-full rounded-2xl border border-border/50 p-2">
+                  <GlowingEffect
+                    spread={30}
+                    glow={true}
+                    disabled={false}
+                    proximity={80}
+                    inactiveZone={0.3}
+                    borderWidth={2}
+                    movementDuration={1.5}
+                  />
+                  <div className="relative flex h-full flex-col justify-between gap-4 overflow-hidden rounded-xl border border-border/30 bg-card/20 p-4 shadow-sm backdrop-blur-sm group-hover:bg-card/40 transition-all duration-300">
+                    <div className="w-fit rounded-lg border border-border/50 bg-muted/50 p-3 group-hover:scale-110 transition-transform duration-300">
+                      <div className={`${
+                        deviceInfo.isKiosk ? 'text-3xl' : 
+                        deviceInfo.isMobile ? 'text-xl' : 'text-2xl'
+                      }`}>🌬️</div>
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className={`font-semibold text-card-foreground ${
+                        deviceInfo.isKiosk ? 'text-lg' : 
+                        deviceInfo.isMobile ? 'text-sm' : 'text-base'
+                      }`}>Wind</h3>
+                      <p className={`text-muted-foreground leading-relaxed ${
+                        deviceInfo.isKiosk ? 'text-base' : 
+                        deviceInfo.isMobile ? 'text-xs' : 'text-sm'
+                      }`}>{weatherData.current.windSpeed} m/s</p>
+                    </div>
+                  </div>
+                </div>
               </div>
               
-              <div className={`text-center border border-gray-200 rounded-lg ${
+              <div className={`group relative rounded-2xl ${
                 deviceInfo.isKiosk ? 'p-6' : 
                 deviceInfo.isMobile ? 'p-3' : 'p-4'
               }`}>
-                <div className={`mb-2 ${
-                  deviceInfo.isKiosk ? 'text-3xl' : 
-                  deviceInfo.isMobile ? 'text-xl' : 'text-2xl'
-                }`}>🔍</div>
-                <div className={`text-gray-600 ${
-                  deviceInfo.isKiosk ? 'text-base' : 
-                  deviceInfo.isMobile ? 'text-xs' : 'text-sm'
-                }`}>Visibility</div>
-                <div className={`font-medium text-gray-900 ${
-                  deviceInfo.isKiosk ? 'text-lg' : 
-                  deviceInfo.isMobile ? 'text-sm' : 'text-base'
-                }`}>{weatherData.current.visibility} km</div>
+                <div className="relative h-full rounded-2xl border border-border/50 p-2">
+                  <GlowingEffect
+                    spread={30}
+                    glow={true}
+                    disabled={false}
+                    proximity={80}
+                    inactiveZone={0.3}
+                    borderWidth={2}
+                    movementDuration={1.5}
+                  />
+                  <div className="relative flex h-full flex-col justify-between gap-4 overflow-hidden rounded-xl border border-border/30 bg-card/20 p-4 shadow-sm backdrop-blur-sm group-hover:bg-card/40 transition-all duration-300">
+                    <div className="w-fit rounded-lg border border-border/50 bg-muted/50 p-3 group-hover:scale-110 transition-transform duration-300">
+                      <div className={`${
+                        deviceInfo.isKiosk ? 'text-3xl' : 
+                        deviceInfo.isMobile ? 'text-xl' : 'text-2xl'
+                      }`}>🔍</div>
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className={`font-semibold text-card-foreground ${
+                        deviceInfo.isKiosk ? 'text-lg' : 
+                        deviceInfo.isMobile ? 'text-sm' : 'text-base'
+                      }`}>Visibility</h3>
+                      <p className={`text-muted-foreground leading-relaxed ${
+                        deviceInfo.isKiosk ? 'text-base' : 
+                        deviceInfo.isMobile ? 'text-xs' : 'text-sm'
+                      }`}>{weatherData.current.visibility} km</p>
+                    </div>
+                  </div>
+                </div>
               </div>
               
-              <div className={`text-center border border-gray-200 rounded-lg ${
+              <div className={`group relative rounded-2xl ${
                 deviceInfo.isKiosk ? 'p-6' : 
                 deviceInfo.isMobile ? 'p-3' : 'p-4'
               }`}>
-                <div className={`mb-2 ${
-                  deviceInfo.isKiosk ? 'text-3xl' : 
-                  deviceInfo.isMobile ? 'text-xl' : 'text-2xl'
-                }`}>📊</div>
-                <div className={`text-gray-600 ${
-                  deviceInfo.isKiosk ? 'text-base' : 
-                  deviceInfo.isMobile ? 'text-xs' : 'text-sm'
-                }`}>Pressure</div>
-                <div className={`font-medium text-gray-900 ${
-                  deviceInfo.isKiosk ? 'text-lg' : 
-                  deviceInfo.isMobile ? 'text-sm' : 'text-base'
-                }`}>{weatherData.current.pressure} hPa</div>
+                <div className="relative h-full rounded-2xl border border-border/50 p-2">
+                  <GlowingEffect
+                    spread={30}
+                    glow={true}
+                    disabled={false}
+                    proximity={80}
+                    inactiveZone={0.3}
+                    borderWidth={2}
+                    movementDuration={1.5}
+                  />
+                  <div className="relative flex h-full flex-col justify-between gap-4 overflow-hidden rounded-xl border border-border/30 bg-card/20 p-4 shadow-sm backdrop-blur-sm group-hover:bg-card/40 transition-all duration-300">
+                    <div className="w-fit rounded-lg border border-border/50 bg-muted/50 p-3 group-hover:scale-110 transition-transform duration-300">
+                      <div className={`${
+                        deviceInfo.isKiosk ? 'text-3xl' : 
+                        deviceInfo.isMobile ? 'text-xl' : 'text-2xl'
+                      }`}>📊</div>
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className={`font-semibold text-card-foreground ${
+                        deviceInfo.isKiosk ? 'text-lg' : 
+                        deviceInfo.isMobile ? 'text-sm' : 'text-base'
+                      }`}>Pressure</h3>
+                      <p className={`text-muted-foreground leading-relaxed ${
+                        deviceInfo.isKiosk ? 'text-base' : 
+                        deviceInfo.isMobile ? 'text-xs' : 'text-sm'
+                      }`}>{weatherData.current.pressure} hPa</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* 5-Day Forecast */}
-        <div className={`bg-white border border-gray-200 rounded-lg ${
+        <div className={`bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg ${
           deviceInfo.isKiosk ? 'p-8' : 
           deviceInfo.isMobile ? 'p-4' : 'p-6'
         }`}>
@@ -354,47 +423,62 @@ const Weather: React.FC = () => {
             deviceInfo.isMobile ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-3 lg:grid-cols-5'
           }`}>
             {weatherData.forecast.slice(0, 5).map((day, index) => (
-              <div key={index} className={`text-center border border-gray-200 rounded-lg hover:border-gray-300 transition-colors ${
+              <div key={index} className={`group relative rounded-2xl ${
                 deviceInfo.isKiosk ? 'p-6' : 
                 deviceInfo.isMobile ? 'p-3' : 'p-4'
               }`}>
-                <div className={`font-medium text-gray-900 mb-2 ${
-                  deviceInfo.isKiosk ? 'text-lg' : 
-                  deviceInfo.isMobile ? 'text-sm' : 'text-base'
-                }`}>
-                  {formatDate(day.date)}
-                </div>
-                
-                <img
-                  src={weatherService.getWeatherIconUrl(day.icon, '2x')}
-                  alt={day.description}
-                  className={`mx-auto mb-2 ${
-                    deviceInfo.isKiosk ? 'w-20 h-20' : 
-                    deviceInfo.isMobile ? 'w-12 h-12' : 'w-16 h-16'
-                  }`}
-                />
-                
-                <div className={`text-gray-600 capitalize mb-2 ${
-                  deviceInfo.isKiosk ? 'text-base' : 
-                  deviceInfo.isMobile ? 'text-xs' : 'text-sm'
-                }`}>
-                  {day.description}
-                </div>
-                
-                <div className={`font-medium text-gray-900 mb-2 ${
-                  deviceInfo.isKiosk ? 'text-lg' : 
-                  deviceInfo.isMobile ? 'text-sm' : 'text-base'
-                }`}>
-                  {day.temperature.max}° / {day.temperature.min}°
-                </div>
-                
-                <div className={`space-y-1 text-gray-500 ${
-                  deviceInfo.isKiosk ? 'text-sm' : 
-                  deviceInfo.isMobile ? 'text-xs' : 'text-xs'
-                }`}>
-                  <div>💧 {day.humidity}%</div>
-                  <div>🌬️ {day.windSpeed} m/s</div>
-                  <div>🌧️ {day.precipitation}%</div>
+                <div className="relative h-full rounded-2xl border border-border/50 p-2">
+                  <GlowingEffect
+                    spread={25}
+                    glow={true}
+                    disabled={false}
+                    proximity={60}
+                    inactiveZone={0.4}
+                    borderWidth={2}
+                    movementDuration={1.2}
+                  />
+                  <div className="relative flex h-full flex-col justify-between gap-4 overflow-hidden rounded-xl border border-border/30 bg-card/20 p-4 shadow-sm backdrop-blur-sm group-hover:bg-card/40 transition-all duration-300">
+                    <div className="text-center">
+                      <div className={`font-medium text-card-foreground mb-2 ${
+                        deviceInfo.isKiosk ? 'text-lg' : 
+                        deviceInfo.isMobile ? 'text-sm' : 'text-base'
+                      }`}>
+                        {formatDate(day.date)}
+                      </div>
+                      
+                      <img
+                        src={weatherService.getWeatherIconUrl(day.icon, '2x')}
+                        alt={day.description}
+                        className={`mx-auto mb-2 ${
+                          deviceInfo.isKiosk ? 'w-20 h-20' : 
+                          deviceInfo.isMobile ? 'w-12 h-12' : 'w-16 h-16'
+                        }`}
+                      />
+                      
+                      <div className={`text-muted-foreground capitalize mb-2 ${
+                        deviceInfo.isKiosk ? 'text-base' : 
+                        deviceInfo.isMobile ? 'text-xs' : 'text-sm'
+                      }`}>
+                        {day.description}
+                      </div>
+                      
+                      <div className={`font-semibold text-card-foreground mb-2 ${
+                        deviceInfo.isKiosk ? 'text-lg' : 
+                        deviceInfo.isMobile ? 'text-sm' : 'text-base'
+                      }`}>
+                        {day.temperature.max}° / {day.temperature.min}°
+                      </div>
+                    </div>
+                    
+                    <div className={`space-y-1 text-muted-foreground ${
+                      deviceInfo.isKiosk ? 'text-sm' : 
+                      deviceInfo.isMobile ? 'text-xs' : 'text-xs'
+                    }`}>
+                      <div>💧 {day.humidity}%</div>
+                      <div>🌬️ {day.windSpeed} m/s</div>
+                      <div>🌧️ {day.precipitation}%</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
