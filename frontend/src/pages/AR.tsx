@@ -6,6 +6,7 @@ import {
   deleteCoin, 
   searchCoins
 } from '../api/coin';
+import { Search } from 'lucide-react';
 import type { 
   CoinResponse,
   CoinCreate,
@@ -219,7 +220,7 @@ const ARPage: React.FC = () => {
             { value: coins.filter(coin => coin.ar_model_url).length, label: 'AR Ready', color: 'text-green-600' },
             { value: coins.length, label: 'Total Coins', color: 'text-gray-600' }
           ].map((stat, index) => (
-            <div key={index} className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 text-center">
+            <div key={index} className="bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg p-4 shadow-sm text-center">
               <div className={`text-2xl font-semibold ${stat.color}`}>{stat.value}</div>
               <div className="text-sm text-gray-500 mt-1">{stat.label}</div>
             </div>
@@ -240,7 +241,7 @@ const ARPage: React.FC = () => {
                   className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 w-full sm:w-64"
                 />
                 <div className="absolute left-3 top-2.5 text-gray-400">
-                  🔍
+                  <Search className="w-4 h-4" />
                 </div>
               </div>
 
@@ -262,7 +263,7 @@ const ARPage: React.FC = () => {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowCreateForm(true)}
-                className="bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 px-4 py-2 font-medium"
+                className="bg-white/30 backdrop-blur-sm text-gray-700 border border-gray-200/30 rounded-lg hover:bg-white/50 px-4 py-2 font-medium"
               >
                 + Add Coin
               </button>
@@ -291,7 +292,7 @@ const ARPage: React.FC = () => {
 
         {/* Create/Edit Form */}
         {(showCreateForm || editingCoin) && (
-          <div className="bg-white rounded-lg p-6 mb-6 shadow-sm border border-gray-100">
+          <div className="bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg p-6 mb-6 shadow-sm">
             <h2 className="font-semibold text-lg mb-4">
               {editingCoin ? 'Edit Coin' : 'Create New Coin'}
             </h2>
@@ -389,7 +390,7 @@ const ARPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={cancelEditing}
-                  className="bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 px-4 py-2 font-medium"
+                  className="bg-white/30 backdrop-blur-sm text-gray-700 border border-gray-200/30 rounded-lg hover:bg-white/50 px-4 py-2 font-medium"
                 >
                   Cancel
                 </button>
@@ -399,7 +400,7 @@ const ARPage: React.FC = () => {
         )}
 
         {/* Coins List */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100">
+        <div className="bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg shadow-sm">
           <div className="border-b border-gray-100 p-4">
             <h2 className="font-semibold">Coins ({coins.length})</h2>
           </div>
@@ -519,7 +520,7 @@ const ARPage: React.FC = () => {
       {/* Coin Details Modal */}
       {selectedCoin && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg max-w-sm w-full p-6">
+          <div className="bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg shadow-lg max-w-sm w-full p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-lg">{selectedCoin.name}</h3>
               <button

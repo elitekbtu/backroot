@@ -6,10 +6,12 @@ import { useLanguage } from '../context/LanguageContext';
 import { useDeviceDetection } from '../hooks/useDeviceDetection';
 import TalkingHead from '../components/TalkingHead';
 import LanguageSelector from '../components/LanguageSelector';
+import { AIVoiceInput } from '../components/ui/ai-voice-input';
+import { PlaceholdersAndVanishInput } from '../components/ui/placeholders-and-vanish-input';
+import { MapPin, X, HelpCircle, Eye, EyeOff, Pause } from 'lucide-react';
 import type { 
   VoiceResponseMessage, 
-  VoiceProcessingState,
-  ConversationEntry
+  VoiceProcessingState
 } from '../api/v2v';
 import type { AvatarConfig, LipSyncData, VisemeData } from '../types/v2v';
 import type { 
@@ -26,7 +28,6 @@ const V2V: React.FC = () => {
   const deviceInfo = useDeviceDetection();
   const [processingState, setProcessingState] = useState<VoiceProcessingState>('idle');
   const [isRecording, setIsRecording] = useState(false);
-  const [conversationHistory, setConversationHistory] = useState<ConversationEntry[]>([]);
   const [textInput, setTextInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -463,14 +464,7 @@ const V2V: React.FC = () => {
         v2vService.setOnVoiceResponse((response: VoiceResponseMessage) => {
           console.log('Voice response received:', response);
           
-          // Add to conversation history with location context
-          setConversationHistory(prev => [...prev, {
-            timestamp: response.timestamp,
-            user_input: response.transcript,
-            ai_response: response.ai_response,
-            type: 'voice',
-            location_context: response.location_context || locationContext || undefined
-          }]);
+          // Voice response processed
 
           // Set avatar mood based on response content (simple sentiment analysis)
           // Support both English and Kazakh keywords
@@ -510,7 +504,6 @@ const V2V: React.FC = () => {
 
         v2vService.setOnConversationHistory((response) => {
           console.log('Conversation history received:', response);
-          setConversationHistory(response.history);
         });
 
         v2vService.setOnLocationUpdate((context) => {
@@ -575,23 +568,21 @@ const V2V: React.FC = () => {
     }
   };
 
-  const handleStopRecording = () => {
+  const handleStopRecording = (duration?: number) => {
     v2vService.stopRecording();
     setIsRecording(false);
+    if (duration) {
+      console.log(`Recording stopped after ${duration} seconds`);
+    }
   };
 
-  const handleTextSubmit = () => {
+  const handleTextSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
+    if (e) {
+      e.preventDefault();
+    }
     if (textInput.trim()) {
       const success = v2vService.sendTextInput(textInput.trim(), locationContext || undefined, language);
       if (success) {
-        // Add to conversation history immediately
-        setConversationHistory(prev => [...prev, {
-          timestamp: new Date().toISOString(),
-          user_input: textInput.trim(),
-          ai_response: '',
-          type: 'text',
-          location_context: locationContext || undefined
-        }]);
         setTextInput('');
         setError(null);
       } else {
@@ -600,16 +591,6 @@ const V2V: React.FC = () => {
     }
   };
 
-  const handleClearHistory = () => {
-    const success = v2vService.clearConversationHistory();
-    if (success) {
-      setConversationHistory([]);
-    }
-  };
-
-  const handleRequestHistory = () => {
-    v2vService.requestConversationHistory();
-  };
 
 
   if (!isInitialized) {
@@ -652,7 +633,7 @@ const V2V: React.FC = () => {
         </div>
 
         {/* Location Status */}
-        <div className={`bg-white rounded-lg shadow-md mb-4 sm:mb-6 ${
+        <div className={`bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg shadow-sm mb-4 sm:mb-6 ${
           deviceInfo.isKiosk ? 'p-6 sm:p-8' : 
           deviceInfo.isMobile ? 'p-3 sm:p-4' : 'p-4 sm:p-6'
         }`}>
@@ -663,8 +644,8 @@ const V2V: React.FC = () => {
                 deviceInfo.isKiosk ? 'text-4xl sm:text-5xl' : 
                 deviceInfo.isMobile ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'
               }`}>
-                {locationPermission.status === 'granted' ? '📍' : 
-                 locationPermission.status === 'denied' ? '🚫' : '❓'}
+                {locationPermission.status === 'granted' ? <MapPin className="w-6 h-6 text-green-500" /> : 
+                 locationPermission.status === 'denied' ? <X className="w-6 h-6 text-red-500" /> : <HelpCircle className="w-6 h-6 text-yellow-500" />}
               </span>
               <div>
                 <div className={`font-medium ${
@@ -690,7 +671,7 @@ const V2V: React.FC = () => {
                 deviceInfo.isKiosk ? 'text-4xl sm:text-5xl' : 
                 deviceInfo.isMobile ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'
               }`}>
-                {locationUI.isWatching ? '👁️' : '👁️‍🗨️'}
+                {locationUI.isWatching ? <Eye className="w-6 h-6 text-blue-500" /> : <EyeOff className="w-6 h-6 text-gray-500" />}
               </span>
               <div>
                 <div className={`font-medium text-gray-700 ${
@@ -761,7 +742,7 @@ const V2V: React.FC = () => {
                   <h4 className="font-semibold mb-2">Популярные места:</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {locationContext.attractions.slice(0, 4).map((attraction, index) => (
-                      <div key={index} className="p-2 bg-white rounded border">
+                      <div key={index} className="p-2 bg-white/20 backdrop-blur-sm border border-gray-200/30 rounded">
                         <div className="font-medium text-sm">{attraction.name}</div>
                         <div className="text-xs text-gray-600">{attraction.description}</div>
                         {attraction.rating && (
@@ -800,7 +781,7 @@ const V2V: React.FC = () => {
         )}
 
         {/* Avatar Section */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg shadow-sm p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">AI Avatar</h2>
           <div className="flex justify-center items-center">
             <div className={`relative flex items-center justify-center ${
@@ -827,7 +808,7 @@ const V2V: React.FC = () => {
         </div>
 
         {/* Voice Controls */}
-        <div className={`bg-white rounded-lg shadow-md mb-4 sm:mb-6 ${
+        <div className={`bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg shadow-sm mb-4 sm:mb-6 ${
           deviceInfo.isKiosk ? 'p-6 sm:p-8' : 
           deviceInfo.isMobile ? 'p-3 sm:p-4' : 'p-4 sm:p-6'
         }`}>
@@ -838,38 +819,17 @@ const V2V: React.FC = () => {
             Голосовое управление
           </h2>
           <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap gap-2 sm:gap-3">
-              <button
-                onClick={handleStartRecording}
-                disabled={!v2vService.isConnected || isRecording || processingState === 'processing' || processingState === 'playing'}
-                className={`bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 transition-all ${
-                  deviceInfo.isKiosk ? 'px-8 py-4 text-xl' : 
-                  deviceInfo.isMobile ? 'px-3 py-2 text-sm' : 'px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base'
-                }`}
-              >
-                <span className={`${
-                  deviceInfo.isKiosk ? 'text-2xl' : 
-                  deviceInfo.isMobile ? 'text-lg' : 'text-lg sm:text-xl'
-                }`}>
-                  {isRecording ? '🔴' : '🎤'}
-                </span>
-                <span>{isRecording ? 'Запись...' : 'Начать запись'}</span>
-              </button>
-              
-              <button
-                onClick={handleStopRecording}
-                disabled={!isRecording}
-                className={`bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 transition-all ${
-                  deviceInfo.isKiosk ? 'px-8 py-4 text-xl' : 
-                  deviceInfo.isMobile ? 'px-3 py-2 text-sm' : 'px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base'
-                }`}
-              >
-                <span className={`${
-                  deviceInfo.isKiosk ? 'text-2xl' : 
-                  deviceInfo.isMobile ? 'text-lg' : 'text-lg sm:text-xl'
-                }`}>⏹️</span>
-                <span>Остановить</span>
-              </button>
+            {/* AI Voice Input Component */}
+            <div className="flex justify-center">
+              <AIVoiceInput
+                onStart={handleStartRecording}
+                onStop={handleStopRecording}
+                visualizerBars={48}
+                className="w-full max-w-md"
+              />
+            </div>
+            
+            <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
               
               {locationPermission.status === 'granted' && (
                 <>
@@ -886,7 +846,7 @@ const V2V: React.FC = () => {
                       deviceInfo.isKiosk ? 'text-2xl' : 
                       deviceInfo.isMobile ? 'text-lg' : 'text-lg sm:text-xl'
                     }`}>
-                      {locationUI.isWatching ? '⏸️' : '👁️'}
+                      {locationUI.isWatching ? <Pause className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </span>
                     <span className={deviceInfo.isKiosk ? 'hidden sm:inline' : ''}>
                       {locationUI.isWatching ? 'Остановить отслеживание' : 'Начать отслеживание'}
@@ -939,7 +899,7 @@ const V2V: React.FC = () => {
         </div>
 
         {/* Text Input */}
-        <div className={`bg-white rounded-lg shadow-md mb-4 sm:mb-6 ${
+        <div className={`bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg shadow-sm mb-4 sm:mb-6 ${
           deviceInfo.isKiosk ? 'p-6 sm:p-8' : 
           deviceInfo.isMobile ? 'p-3 sm:p-4' : 'p-4 sm:p-6'
         }`}>
@@ -949,139 +909,17 @@ const V2V: React.FC = () => {
           }`}>
             Текстовый ввод
           </h2>
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-            <input
-              type="text"
-              value={textInput}
-              onChange={(e) => setTextInput(e.target.value)}
-              placeholder="Введите ваше сообщение..."
-              className={`flex-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent ${
-                deviceInfo.isKiosk ? 'px-6 py-4 text-xl' : 
-                deviceInfo.isMobile ? 'px-3 py-2 text-sm' : 'px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base'
-              }`}
-              onKeyPress={(e) => e.key === 'Enter' && handleTextSubmit()}
-              disabled={!v2vService.isConnected || processingState === 'processing' || processingState === 'playing'}
-            />
-            <button
-              onClick={handleTextSubmit}
-              disabled={!v2vService.isConnected || !textInput.trim() || processingState === 'processing' || processingState === 'playing'}
-              className={`bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 ${
-                deviceInfo.isKiosk ? 'px-8 py-4 text-xl' : 
-                deviceInfo.isMobile ? 'px-3 py-2 text-sm' : 'px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base'
-              }`}
-            >
-              <span className={`${
-                deviceInfo.isKiosk ? 'text-2xl' : 
-                deviceInfo.isMobile ? 'text-lg' : 'text-lg sm:text-xl'
-              }`}>📤</span>
-              <span>Отправить</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Conversation History */}
-        <div className={`bg-white rounded-lg shadow-md mb-4 sm:mb-6 ${
-          deviceInfo.isKiosk ? 'p-6 sm:p-8' : 
-          deviceInfo.isMobile ? 'p-3 sm:p-4' : 'p-4 sm:p-6'
-        }`}>
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4">
-            <h2 className={`font-semibold mb-2 sm:mb-0 ${
-              deviceInfo.isKiosk ? 'text-2xl sm:text-3xl' : 
-              deviceInfo.isMobile ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'
-            }`}>
-              История разговора
-            </h2>
-            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-              <button
-                onClick={handleRequestHistory}
-                className={`bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors ${
-                  deviceInfo.isKiosk ? 'px-6 py-3 text-lg' : 
-                  deviceInfo.isMobile ? 'px-2 py-1 text-xs' : 'px-3 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm'
-                }`}
-              >
-                🔄 Обновить
-              </button>
-              <button
-                onClick={handleClearHistory}
-                className={`bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors ${
-                  deviceInfo.isKiosk ? 'px-6 py-3 text-lg' : 
-                  deviceInfo.isMobile ? 'px-2 py-1 text-xs' : 'px-3 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm'
-                }`}
-              >
-                🗑️ Очистить
-              </button>
-            </div>
-          </div>
-          
-          <div className={`space-y-3 sm:space-y-4 max-h-96 overflow-y-auto ${
-            deviceInfo.isKiosk ? 'max-h-[500px]' : 'max-h-96'
-          }`}>
-            {conversationHistory.length === 0 ? (
-              <div className={`text-center py-8 text-gray-500 ${
-                deviceInfo.isKiosk ? 'py-12' : 'py-8'
-              }`}>
-                <div className={`mb-4 ${
-                  deviceInfo.isKiosk ? 'text-8xl sm:text-9xl' : 
-                  deviceInfo.isMobile ? 'text-4xl sm:text-5xl' : 'text-6xl sm:text-7xl'
-                }`}>💬</div>
-                <p className={`${
-                  deviceInfo.isKiosk ? 'text-xl sm:text-2xl' : 
-                  deviceInfo.isMobile ? 'text-sm sm:text-base' : 'text-base sm:text-lg'
-                }`}>Пока нет разговоров</p>
-                <p className={`${
-                  deviceInfo.isKiosk ? 'text-lg sm:text-xl' : 
-                  deviceInfo.isMobile ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'
-                }`}>Начните говорить или введите сообщение</p>
-              </div>
-            ) : (
-              conversationHistory.map((entry, index) => (
-                <div key={index} className={`border-l-4 border-yellow-500 pl-3 sm:pl-4 py-2 sm:py-3 ${
-                  deviceInfo.isKiosk ? 'pl-6 py-4' : 
-                  deviceInfo.isMobile ? 'pl-2 py-1' : 'pl-4 py-2'
-                }`}>
-                  <div className={`flex items-center space-x-2 text-gray-600 mb-2 ${
-                    deviceInfo.isKiosk ? 'text-lg sm:text-xl' : 
-                    deviceInfo.isMobile ? 'text-xs' : 'text-xs sm:text-sm'
-                  }`}>
-                    <span>{entry.type === 'voice' ? '🎤' : '📝'}</span>
-                    <span>{new Date(entry.timestamp).toLocaleTimeString()}</span>
-                  </div>
-                  
-                  <div className={`mb-3 ${
-                    deviceInfo.isKiosk ? 'mb-4' : 
-                    deviceInfo.isMobile ? 'mb-2' : 'mb-3'
-                  }`}>
-                    <div className="flex items-start space-x-2">
-                      <span className={`text-blue-600 font-medium ${
-                        deviceInfo.isKiosk ? 'text-lg sm:text-xl' : 
-                        deviceInfo.isMobile ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'
-                      }`}>Вы:</span>
-                      <span className={`text-gray-800 ${
-                        deviceInfo.isKiosk ? 'text-lg sm:text-xl' : 
-                        deviceInfo.isMobile ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'
-                      }`}>{entry.user_input}</span>
-                    </div>
-                  </div>
-                  
-                  <div className={`bg-gray-50 rounded-lg ${
-                    deviceInfo.isKiosk ? 'p-4 sm:p-6' : 
-                    deviceInfo.isMobile ? 'p-2 sm:p-3' : 'p-3 sm:p-4'
-                  }`}>
-                    <div className="flex items-start space-x-2">
-                      <span className={`text-green-600 font-medium ${
-                        deviceInfo.isKiosk ? 'text-lg sm:text-xl' : 
-                        deviceInfo.isMobile ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'
-                      }`}>ИИ:</span>
-                      <span className={`text-gray-800 ${
-                        deviceInfo.isKiosk ? 'text-lg sm:text-xl' : 
-                        deviceInfo.isMobile ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'
-                      }`}>{entry.ai_response}</span>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+          <PlaceholdersAndVanishInput
+            placeholders={[
+              "Введите ваше сообщение...",
+              "Спросите что-нибудь у ИИ",
+              "Расскажите о погоде",
+              "Как дела?",
+              "Что нового?"
+            ]}
+            onChange={(e) => setTextInput(e.target.value)}
+            onSubmit={handleTextSubmit}
+          />
         </div>
       </div>
     </div>

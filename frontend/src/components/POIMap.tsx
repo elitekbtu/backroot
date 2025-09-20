@@ -173,7 +173,7 @@ const POIMap: React.FC<POIMapProps> = ({ userLocation, pois, onPOIClick, onMapRe
       // Добавляем информационное окно
       const infoWindow = new google.maps.InfoWindow({
         content: `
-          <div class="p-3 bg-white border border-gray-200 rounded-lg shadow-sm">
+          <div class="p-3 bg-white/20 backdrop-blur-sm/30 backdrop-blur-sm border border-gray-200/30 rounded-lg shadow-sm">
             <h3 class="font-medium text-gray-900 text-sm">${poi.name}</h3>
             <p class="text-xs text-gray-500 mt-1">${poi.city}</p>
             ${poi.distance ? `<p class="text-xs text-gray-400 mt-1">Distance: ${Math.round(poi.distance)}m</p>` : ''}
@@ -197,7 +197,7 @@ const POIMap: React.FC<POIMapProps> = ({ userLocation, pois, onPOIClick, onMapRe
 
   if (error) {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
+      <div className="bg-white/20 backdrop-blur-sm border border-gray-200 rounded-lg p-6">
         <div className="flex items-center">
           <div className="text-red-500 mr-2">⚠️</div>
           <div className="text-gray-900">{error}</div>
@@ -213,7 +213,7 @@ const POIMap: React.FC<POIMapProps> = ({ userLocation, pois, onPOIClick, onMapRe
     <div className="w-full h-96 rounded-lg overflow-hidden border border-gray-200">
       <div ref={mapRef} className="w-full h-full" />
       {!isLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white">
+        <div className="absolute inset-0 flex items-center justify-center bg-white/20 backdrop-blur-sm">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
             <div className="text-gray-600">Loading map...</div>

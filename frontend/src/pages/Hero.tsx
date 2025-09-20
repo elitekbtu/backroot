@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { BackgroundPaths } from '@/components/ui/background-paths';
 import { BackRootFooter } from '@/components/ui/backroot-footer';
 import { GlowingEffect } from '@/components/ui/glowing-effect';
-import MainNavbar from '@/components/MainNavbar';
+import { Mic, Camera, Cloud } from 'lucide-react';
 
 const Hero: React.FC = () => {
   const words = ["Back", "Root"];
@@ -50,9 +50,6 @@ const Hero: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full bg-background">
-      {/* Transparent Navbar */}
-      <MainNavbar />
-      
       {/* Hero Section */}
       <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden">
         {/* Background Paths Component - only paths, no content */}
@@ -162,17 +159,17 @@ const Hero: React.FC = () => {
               >
                 {[
                   {
-                    icon: "🎤",
+                    icon: <Mic className="w-8 h-8 text-blue-500" />,
                     title: "Voice Processing",
                     description: "Advanced AI voice recognition and synthesis"
                   },
                   {
-                    icon: "📹",
+                    icon: <Camera className="w-8 h-8 text-green-500" />,
                     title: "Video Generation", 
                     description: "Create videos with AI assistance"
                   },
                   {
-                    icon: "🌤️",
+                    icon: <Cloud className="w-8 h-8 text-cyan-500" />,
                     title: "Weather Integration",
                     description: "Real-time weather data and forecasts"
                   }
@@ -198,11 +195,9 @@ const Hero: React.FC = () => {
                       />
                       <div className="relative flex h-full flex-col justify-between gap-6 overflow-hidden rounded-xl border border-border/50 bg-card/50 p-6 shadow-sm backdrop-blur-sm group-hover:bg-card/80 transition-all duration-300">
                         <div className="relative flex flex-1 flex-col justify-between gap-4">
-                          <div className="w-fit rounded-lg border border-border/50 bg-muted/50 p-3 group-hover:scale-110 transition-transform duration-300">
-                            <div className="text-3xl">
-                              {feature.icon}
-                            </div>
-                          </div>
+                        <div className="w-fit rounded-lg border border-border/50 bg-muted/50 p-3 group-hover:scale-110 transition-transform duration-300">
+                          {feature.icon}
+                        </div>
                           <div className="space-y-3">
                             <h3 className="text-xl font-semibold text-card-foreground">
                               {feature.title}

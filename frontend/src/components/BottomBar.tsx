@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useDeviceDetection } from '../hooks/useDeviceDetection';
+import { Home, Cloud, Camera, Mic, MicIcon, MapPin, User } from 'lucide-react';
 
 interface BottomBarProps {
   className?: string;
@@ -23,38 +24,38 @@ const BottomBar: React.FC<BottomBarProps> = ({ className = '' }) => {
     { 
       path: '/dashboard', 
       label: 'Home', 
-      icon: '🏠',
-      activeIcon: '🏠'
+      icon: <Home className="w-5 h-5" />,
+      activeIcon: <Home className="w-5 h-5" />
     },
     { 
       path: '/dashboard/weather', 
       label: 'Weather', 
-      icon: '🌤️',
-      activeIcon: '🌤️'
+      icon: <Cloud className="w-5 h-5" />,
+      activeIcon: <Cloud className="w-5 h-5" />
     },
     { 
       path: '/dashboard/ar', 
       label: 'AR', 
-      icon: '📹',
-      activeIcon: '🥽'
+      icon: <Camera className="w-5 h-5" />,
+      activeIcon: <Camera className="w-5 h-5" />
     },
     { 
       path: '/dashboard/v2v', 
       label: 'Voice', 
-      icon: '🎤',
-      activeIcon: '🎙️'
+      icon: <Mic className="w-5 h-5" />,
+      activeIcon: <MicIcon className="w-5 h-5" />
     },
     { 
       path: '/dashboard/poi', 
       label: 'POI', 
-      icon: '📍',
-      activeIcon: '📍'
+      icon: <MapPin className="w-5 h-5" />,
+      activeIcon: <MapPin className="w-5 h-5" />
     },
     { 
       path: '/dashboard/profile', 
       label: 'Profile', 
-      icon: '👤',
-      activeIcon: '👤'
+      icon: <User className="w-5 h-5" />,
+      activeIcon: <User className="w-5 h-5" />
     },
   ];
 

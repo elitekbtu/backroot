@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { weatherService } from '../api/weather';
 import { useDeviceDetection } from '../hooks/useDeviceDetection';
 import { GlowingEffect } from '@/components/ui/glowing-effect';
+import { Droplets, Wind, Eye, BarChart3, AlertTriangle, CloudRain } from 'lucide-react';
 import type { WeatherData } from '../types/weather';
 
 const Weather: React.FC = () => {
@@ -130,11 +131,12 @@ const Weather: React.FC = () => {
         <div className={`w-full text-center ${
           deviceInfo.isKiosk ? 'max-w-lg' : 'max-w-md'
         }`}>
-          <div className={`text-red-500 mb-4 ${
+          <div className={`text-red-500 mb-4 flex items-center ${
             deviceInfo.isKiosk ? 'text-2xl' : 
             deviceInfo.isMobile ? 'text-base' : 'text-lg'
           }`}>
-            ⚠️ {error}
+            <AlertTriangle className="w-5 h-5 mr-2" />
+            {error}
           </div>
           <form onSubmit={handleCitySearch} className="space-y-4">
             <input
@@ -279,10 +281,10 @@ const Weather: React.FC = () => {
                   />
                   <div className="relative flex h-full flex-col justify-between gap-4 overflow-hidden rounded-xl border border-border/30 bg-card/20 p-4 shadow-sm backdrop-blur-sm group-hover:bg-card/40 transition-all duration-300">
                     <div className="w-fit rounded-lg border border-border/50 bg-muted/50 p-3 group-hover:scale-110 transition-transform duration-300">
-                      <div className={`${
-                        deviceInfo.isKiosk ? 'text-3xl' : 
-                        deviceInfo.isMobile ? 'text-xl' : 'text-2xl'
-                      }`}>💧</div>
+                      <Droplets className={`${
+                        deviceInfo.isKiosk ? 'w-8 h-8' : 
+                        deviceInfo.isMobile ? 'w-6 h-6' : 'w-7 h-7'
+                      } text-blue-500`} />
                     </div>
                     <div className="space-y-2">
                       <h3 className={`font-semibold text-card-foreground ${
@@ -314,10 +316,10 @@ const Weather: React.FC = () => {
                   />
                   <div className="relative flex h-full flex-col justify-between gap-4 overflow-hidden rounded-xl border border-border/30 bg-card/20 p-4 shadow-sm backdrop-blur-sm group-hover:bg-card/40 transition-all duration-300">
                     <div className="w-fit rounded-lg border border-border/50 bg-muted/50 p-3 group-hover:scale-110 transition-transform duration-300">
-                      <div className={`${
-                        deviceInfo.isKiosk ? 'text-3xl' : 
-                        deviceInfo.isMobile ? 'text-xl' : 'text-2xl'
-                      }`}>🌬️</div>
+                      <Wind className={`${
+                        deviceInfo.isKiosk ? 'w-8 h-8' : 
+                        deviceInfo.isMobile ? 'w-6 h-6' : 'w-7 h-7'
+                      } text-cyan-500`} />
                     </div>
                     <div className="space-y-2">
                       <h3 className={`font-semibold text-card-foreground ${
@@ -349,10 +351,10 @@ const Weather: React.FC = () => {
                   />
                   <div className="relative flex h-full flex-col justify-between gap-4 overflow-hidden rounded-xl border border-border/30 bg-card/20 p-4 shadow-sm backdrop-blur-sm group-hover:bg-card/40 transition-all duration-300">
                     <div className="w-fit rounded-lg border border-border/50 bg-muted/50 p-3 group-hover:scale-110 transition-transform duration-300">
-                      <div className={`${
-                        deviceInfo.isKiosk ? 'text-3xl' : 
-                        deviceInfo.isMobile ? 'text-xl' : 'text-2xl'
-                      }`}>🔍</div>
+                      <Eye className={`${
+                        deviceInfo.isKiosk ? 'w-8 h-8' : 
+                        deviceInfo.isMobile ? 'w-6 h-6' : 'w-7 h-7'
+                      } text-green-500`} />
                     </div>
                     <div className="space-y-2">
                       <h3 className={`font-semibold text-card-foreground ${
@@ -384,10 +386,10 @@ const Weather: React.FC = () => {
                   />
                   <div className="relative flex h-full flex-col justify-between gap-4 overflow-hidden rounded-xl border border-border/30 bg-card/20 p-4 shadow-sm backdrop-blur-sm group-hover:bg-card/40 transition-all duration-300">
                     <div className="w-fit rounded-lg border border-border/50 bg-muted/50 p-3 group-hover:scale-110 transition-transform duration-300">
-                      <div className={`${
-                        deviceInfo.isKiosk ? 'text-3xl' : 
-                        deviceInfo.isMobile ? 'text-xl' : 'text-2xl'
-                      }`}>📊</div>
+                      <BarChart3 className={`${
+                        deviceInfo.isKiosk ? 'w-8 h-8' : 
+                        deviceInfo.isMobile ? 'w-6 h-6' : 'w-7 h-7'
+                      } text-purple-500`} />
                     </div>
                     <div className="space-y-2">
                       <h3 className={`font-semibold text-card-foreground ${
@@ -474,9 +476,18 @@ const Weather: React.FC = () => {
                       deviceInfo.isKiosk ? 'text-sm' : 
                       deviceInfo.isMobile ? 'text-xs' : 'text-xs'
                     }`}>
-                      <div>💧 {day.humidity}%</div>
-                      <div>🌬️ {day.windSpeed} m/s</div>
-                      <div>🌧️ {day.precipitation}%</div>
+                      <div className="flex items-center">
+                        <Droplets className="w-3 h-3 mr-1 text-blue-500" />
+                        {day.humidity}%
+                      </div>
+                      <div className="flex items-center">
+                        <Wind className="w-3 h-3 mr-1 text-cyan-500" />
+                        {day.windSpeed} m/s
+                      </div>
+                      <div className="flex items-center">
+                        <CloudRain className="w-3 h-3 mr-1 text-gray-500" />
+                        {day.precipitation}%
+                      </div>
                     </div>
                   </div>
                 </div>

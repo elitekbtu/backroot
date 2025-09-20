@@ -247,13 +247,13 @@ const POICollector: React.FC = () => {
 
       {/* Статистика */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-white rounded-lg shadow-md p-6 text-center">
+        <div className="bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg shadow-sm p-6 text-center">
           <div className="text-3xl font-bold text-indigo-600 mb-2">💰</div>
           <div className="text-2xl font-bold text-gray-800">{coins}</div>
           <div className="text-gray-600">Коинов</div>
         </div>
         
-        <div className="bg-white rounded-lg shadow-md p-6 text-center">
+        <div className="bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg shadow-sm p-6 text-center">
           <div className="text-3xl font-bold text-green-600 mb-2">📍</div>
           <div className="text-sm text-gray-600">
             {userLocation ? (
@@ -270,7 +270,7 @@ const POICollector: React.FC = () => {
           </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow-md p-6 text-center">
+        <div className="bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg shadow-sm p-6 text-center">
           <div className="text-3xl font-bold text-purple-600 mb-2">🏆</div>
           <div className="text-2xl font-bold text-gray-800">{collectedPOIs.size}</div>
           <div className="text-gray-600">Мест посещено</div>
@@ -278,7 +278,7 @@ const POICollector: React.FC = () => {
       </div>
 
       {/* Управление */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+      <div className="bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg shadow-sm p-6 mb-8">
         <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold text-gray-800 mb-2">
@@ -319,7 +319,7 @@ const POICollector: React.FC = () => {
       </div>
 
         {/* Карта с POI */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div className="bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg shadow-sm p-6 mb-8">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
             🗺️ Карта с точками интереса
           </h2>
@@ -356,7 +356,7 @@ const POICollector: React.FC = () => {
         </div>
 
         {/* Ближайшие POI */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg shadow-sm p-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
             📍 Ближайшие места
           </h2>
@@ -420,19 +420,6 @@ const POICollector: React.FC = () => {
           )}
         </div>
 
-      {/* Инструкции */}
-      <div className="mt-8 bg-blue-50 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-blue-800 mb-3">
-          📋 Как играть
-        </h3>
-        <ul className="text-blue-700 space-y-2">
-          <li>• Нажмите "Начать отслеживание" для активации геолокации</li>
-          <li>• Подойдите к любой точке интереса ближе чем на 50 метров</li>
-          <li>• Получите +10 коинов за каждое новое место</li>
-          <li>• Каждое место можно посетить только один раз</li>
-          <li>• Ваш прогресс сохраняется автоматически</li>
-        </ul>
-      </div>
     </div>
   );
 };

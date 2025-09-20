@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useDeviceDetection } from '../hooks/useDeviceDetection';
 import { GlowingEffect } from '@/components/ui/glowing-effect';
 import { BackRootFeatures } from '@/components/ui/backroot-features';
+import { Mic, Camera, Cloud, Settings } from 'lucide-react';
 
 const Home: React.FC = () => {
   const deviceInfo = useDeviceDetection();
@@ -10,25 +11,25 @@ const Home: React.FC = () => {
   const quickActions = [
     { 
       path: '/dashboard/v2v', 
-      icon: '🎤', 
+      icon: <Mic className="w-6 h-6" />, 
       title: 'Voice to Voice', 
       description: 'Convert and process voice content'
     },
     { 
       path: '/dashboard/ar', 
-      icon: '📹', 
+      icon: <Camera className="w-6 h-6" />, 
       title: 'AR Features', 
       description: 'Augmented reality experiences'
     },
     { 
       path: '/dashboard/weather', 
-      icon: '🌤️', 
+      icon: <Cloud className="w-6 h-6" />, 
       title: 'Weather', 
       description: 'Real-time weather data'
     },
     { 
       path: '/dashboard/settings', 
-      icon: '⚙️', 
+      icon: <Settings className="w-6 h-6" />, 
       title: 'Settings', 
       description: 'Configure your preferences'
     },

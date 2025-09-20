@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useGLTF, Html } from '@react-three/drei';
 import { Group, Mesh } from 'three';
+import { AlertTriangle, Settings, RefreshCw, Camera } from 'lucide-react';
 import { getCoinsForAR } from '../api/coin';
 import { collectCoinPublic } from '../api/coinCollection';
 import type { CoinResponse } from '../types/coin';
@@ -471,7 +472,9 @@ const SimpleAR: React.FC<SimpleARProps> = ({
     return (
       <div className="flex items-center justify-center h-screen bg-black text-white">
         <div className="text-center">
-          <div className="text-red-500 text-4xl mb-2">⚠️</div>
+          <div className="text-red-500 text-4xl mb-2">
+          <AlertTriangle className="w-12 h-12" />
+        </div>
           <p className="text-sm mb-3">{error}</p>
           <button
             onClick={loadCoins}
@@ -544,7 +547,7 @@ const SimpleAR: React.FC<SimpleARProps> = ({
           disabled={cameraLoading || cameraInitializing}
           className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-all disabled:opacity-50"
         >
-          {cameraInitializing ? '⚙️' : cameraLoading ? '🔄' : '📷'}
+            {cameraInitializing ? <Settings className="w-6 h-6" /> : cameraLoading ? <RefreshCw className="w-6 h-6 animate-spin" /> : <Camera className="w-6 h-6" />}
         </button>
 
         <button
