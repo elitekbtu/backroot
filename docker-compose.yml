@@ -1,8 +1,9 @@
 services:
   backend:
     build: ./backend
-    ports:
-      - "8000:8000"
+    # Removed external port mapping - backend only accessible via nginx proxy
+    expose:
+      - "8000"  # Internal port for container communication
     volumes:
       - ./backend:/app
     env_file:
