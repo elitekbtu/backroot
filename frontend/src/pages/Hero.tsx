@@ -8,7 +8,7 @@ import { GlowingEffect } from '@/components/ui/glowing-effect';
 import { Mic, Camera, Cloud } from 'lucide-react';
 
 const Hero: React.FC = () => {
-  const words = ["Back", "Root"];
+  const words = ["Back", "Roots"];
   
   // Animation variants
   const containerVariants = {

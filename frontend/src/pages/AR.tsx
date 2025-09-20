@@ -201,7 +201,7 @@ const ARPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
@@ -220,7 +220,7 @@ const ARPage: React.FC = () => {
             { value: coins.filter(coin => coin.ar_model_url).length, label: 'AR Ready', color: 'text-green-600' },
             { value: coins.length, label: 'Total Coins', color: 'text-gray-600' }
           ].map((stat, index) => (
-            <div key={index} className="bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg p-4 shadow-sm text-center">
+            <div key={index} className="bg-transparent backdrop-blur-sm border border-gray-200/20 rounded-lg p-4 shadow-sm text-center">
               <div className={`text-2xl font-semibold ${stat.color}`}>{stat.value}</div>
               <div className="text-sm text-gray-500 mt-1">{stat.label}</div>
             </div>
@@ -228,7 +228,7 @@ const ARPage: React.FC = () => {
         </div>
 
         {/* Controls */}
-        <div className="bg-white rounded-lg p-4 mb-6 shadow-sm border border-gray-100">
+        <div className="bg-transparent backdrop-blur-sm border border-gray-200/20 rounded-lg p-4 mb-6 shadow-sm">
           <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
             <div className="flex flex-col sm:flex-row gap-3 flex-1">
               {/* Search */}
@@ -263,7 +263,7 @@ const ARPage: React.FC = () => {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowCreateForm(true)}
-                className="bg-white/30 backdrop-blur-sm text-gray-700 border border-gray-200/30 rounded-lg hover:bg-white/50 px-4 py-2 font-medium"
+                className="bg-white/30 backdrop-blur-sm text-gray-700 border border-gray-200/30 rounded-lg hover:bg-white/10 px-4 py-2 font-medium"
               >
                 + Add Coin
               </button>
@@ -279,7 +279,7 @@ const ARPage: React.FC = () => {
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg mb-6 p-4 flex items-center justify-between">
+          <div className="bg-red-50/30 backdrop-blur-sm border border-red-200/30 text-red-700 rounded-lg mb-6 p-4 flex items-center justify-between">
             <span>{error}</span>
             <button
               onClick={() => setError(null)}
@@ -292,7 +292,7 @@ const ARPage: React.FC = () => {
 
         {/* Create/Edit Form */}
         {(showCreateForm || editingCoin) && (
-          <div className="bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg p-6 mb-6 shadow-sm">
+          <div className="bg-transparent backdrop-blur-sm border border-gray-200/20 rounded-lg p-6 mb-6 shadow-sm">
             <h2 className="font-semibold text-lg mb-4">
               {editingCoin ? 'Edit Coin' : 'Create New Coin'}
             </h2>
@@ -390,7 +390,7 @@ const ARPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={cancelEditing}
-                  className="bg-white/30 backdrop-blur-sm text-gray-700 border border-gray-200/30 rounded-lg hover:bg-white/50 px-4 py-2 font-medium"
+                  className="bg-white/30 backdrop-blur-sm text-gray-700 border border-gray-200/30 rounded-lg hover:bg-white/10 px-4 py-2 font-medium"
                 >
                   Cancel
                 </button>
@@ -400,8 +400,8 @@ const ARPage: React.FC = () => {
         )}
 
         {/* Coins List */}
-        <div className="bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg shadow-sm">
-          <div className="border-b border-gray-100 p-4">
+        <div className="bg-transparent backdrop-blur-sm border border-gray-200/20 rounded-lg shadow-sm">
+          <div className="border-b border-gray-100/30 p-4">
             <h2 className="font-semibold">Coins ({coins.length})</h2>
           </div>
           
@@ -417,9 +417,9 @@ const ARPage: React.FC = () => {
               <p>Create your first coin to get started</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100/30">
               {coins.map((coin) => (
-                <div key={coin.id} className="p-4 hover:bg-gray-50 transition-colors">
+                <div key={coin.id} className="p-4 hover:bg-white/10 transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
@@ -458,7 +458,7 @@ const ARPage: React.FC = () => {
                     </div>
                   </div>
                   {coin.ar_model_url && (
-                    <div className="mt-3 bg-gray-50 rounded-lg p-3 text-sm">
+                    <div className="mt-3 bg-white/10 backdrop-blur-sm rounded-lg p-3 text-sm">
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                         <div>
                           <span className="font-medium">Scale:</span>
@@ -490,7 +490,7 @@ const ARPage: React.FC = () => {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="border-t border-gray-100 p-4">
+            <div className="border-t border-gray-100/30 p-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-700">
                   Page {currentPage} of {totalPages}
@@ -499,14 +499,14 @@ const ARPage: React.FC = () => {
                   <button
                     onClick={() => loadCoins(currentPage - 1, searchQuery, filterActive)}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-1 text-sm border border-gray-200/30 rounded-lg hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Previous
                   </button>
                   <button
                     onClick={() => loadCoins(currentPage + 1, searchQuery, filterActive)}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-1 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-1 text-sm border border-gray-200/30 rounded-lg hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next
                   </button>
@@ -520,7 +520,7 @@ const ARPage: React.FC = () => {
       {/* Coin Details Modal */}
       {selectedCoin && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg shadow-lg max-w-sm w-full p-6">
+          <div className="bg-transparent backdrop-blur-sm border border-gray-200/20 rounded-lg shadow-lg max-w-sm w-full p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-lg">{selectedCoin.name}</h3>
               <button
