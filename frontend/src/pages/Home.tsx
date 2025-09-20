@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useDeviceDetection } from '../hooks/useDeviceDetection';
 import { GlowingEffect } from '@/components/ui/glowing-effect';
-import { BackRootFeatures } from '@/components/ui/backroot-features';
+import { Back2RootsFeatures } from '@/components/ui/backroot-features';
+import FAQAccordion from '@/components/ui/faq-accordion';
 import { Mic, Camera, Cloud, Settings } from 'lucide-react';
 
 const Home: React.FC = () => {
@@ -103,7 +104,7 @@ const Home: React.FC = () => {
             }}
           >
             Welcome to <motion.span 
-              className="font-medium bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"
+              className="font-black text-black tracking-tight"
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ 
@@ -113,7 +114,7 @@ const Home: React.FC = () => {
                 delay: 0.3 
               }}
             >
-              BackRoot
+                Back2Roots
             </motion.span>
           </motion.h1>
           <motion.p 
@@ -225,7 +226,30 @@ const Home: React.FC = () => {
           delay: 0.8 
         }}
       >
-        <BackRootFeatures />
+        <Back2RootsFeatures />
+      </motion.div>
+
+      {/* FAQ Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 50 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ 
+          type: "spring", 
+          stiffness: 100, 
+          damping: 20,
+          delay: 1.0 
+        }}
+        className="mt-16"
+      >
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            Learn More About Back2Roots
+          </h2>
+          <p className="text-gray-600 max-w-2xl mx-auto">
+            Discover how our platform is revolutionizing tourism in Kazakhstan
+          </p>
+        </div>
+        <FAQAccordion />
       </motion.div>
     </motion.div>
   );

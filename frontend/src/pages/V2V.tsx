@@ -1,28 +1,26 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { v2vService } from '../api/v2v';
-import { locationService } from '../api/location';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useDeviceDetection } from '../hooks/useDeviceDetection';
-import TalkingHead from '../components/TalkingHead';
-import { LanguageSelector } from '../components/ui/language-selector';
+import { useLocation } from '../hooks/useLocation';
+import { useLipSync } from '../hooks/useLipSync';
 import { ChatHistory } from '../components/ui/chat-history';
-import { AIVoiceInput } from '../components/ui/ai-voice-input';
-import { PlaceholdersAndVanishInput } from '../components/ui/placeholders-and-vanish-input';
-import { MapPin, X, HelpCircle, Eye, EyeOff, Pause, Bot, User, Mic, MicIcon, Settings, RefreshCw, Globe } from 'lucide-react';
+import { 
+  LocationCard, 
+  TrackingCard, 
+  LanguageCard, 
+  AvatarSection, 
+  VoiceControls, 
+  TextInputSection 
+} from '../components/v2v';
 import type { 
   VoiceResponseMessage, 
   VoiceProcessingState
 } from '../api/v2v';
-import type { AvatarConfig, LipSyncData, VisemeData } from '../types/v2v';
-import type { 
-  LocationContext, 
-  GeolocationError,
-  LocationPermissionState,
-  LocationUIState,
-  LocationSettings
-} from '../types/location';
+import type { AvatarConfig } from '../types/v2v';
+import type { LocationSettings } from '../types/location';
 
 interface ChatMessage {
   id: string;
@@ -41,25 +39,10 @@ const V2V: React.FC = () => {
   const [textInput, setTextInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [currentLipSyncData, setCurrentLipSyncData] = useState<LipSyncData | null>(null);
   const [avatarMood, setAvatarMood] = useState<string>('neutral');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [isTyping, setIsTyping] = useState(false);
   
-  // Location-related state
-  const [locationContext, setLocationContext] = useState<LocationContext | null>(null);
-  const [locationPermission, setLocationPermission] = useState<LocationPermissionState>({
-    status: 'unknown',
-    canRequest: true,
-    message: 'Checking location permission...'
-  });
-  const [locationUI, setLocationUI] = useState<LocationUIState>({
-    isRequesting: false,
-    isWatching: false,
-    lastUpdate: null,
-    error: null,
-    showLocationInfo: false
-  });
+  // Location settings
   const [locationSettings] = useState<LocationSettings>({
     enableHighAccuracy: true,
     timeout: 10000,
@@ -67,6 +50,23 @@ const V2V: React.FC = () => {
     watchLocation: false,
     autoUpdateContext: true
   });
+
+  // Custom hooks
+  const {
+    locationContext,
+    locationPermission,
+    locationUI,
+    requestLocationPermission,
+    startLocationWatching,
+    stopLocationWatching,
+    setLocationContext
+  } = useLocation(locationSettings);
+
+  const {
+    currentLipSyncData,
+    generateEnhancedLipSyncData,
+    playAudioWithLipSync
+  } = useLipSync();
   
   // Memoized lip sync data to prevent unnecessary re-renders
   const memoizedLipSyncData = useMemo(() => {
@@ -93,347 +93,6 @@ const V2V: React.FC = () => {
   }), [deviceInfo.isMobile, deviceInfo.isKiosk]);
   
   const userId = user?.id?.toString() || 'anonymous';
-
-
-  // Location functions
-  const requestLocationPermission = useCallback(async () => {
-    setLocationUI(prev => ({ ...prev, isRequesting: true, error: null }));
-    
-    try {
-      const location = await locationService.getCurrentLocation({
-        enableHighAccuracy: locationSettings.enableHighAccuracy,
-        timeout: locationSettings.timeout,
-        maximumAge: locationSettings.maximumAge
-      });
-      
-      setLocationPermission({
-        status: 'granted',
-        canRequest: false,
-        message: 'Location access granted'
-      });
-      
-      // Get full location context
-      const context = await locationService.getLocationContext(location);
-      setLocationContext(context);
-      
-      // Send location context to AI
-      v2vService.sendLocationContext(context);
-      
-      setLocationUI(prev => ({
-        ...prev,
-        isRequesting: false,
-        lastUpdate: new Date(),
-        error: null
-      }));
-      
-      return true;
-    } catch (error) {
-      const geolocationError = error as GeolocationError;
-      console.error('Location request failed:', geolocationError);
-      
-      let permissionStatus: LocationPermissionState['status'] = 'denied';
-      let message = 'Location access denied';
-      
-      switch (geolocationError.type) {
-        case 'permission_denied':
-          permissionStatus = 'denied';
-          message = 'Location access denied. Please enable location permissions in your browser settings.';
-          break;
-        case 'position_unavailable':
-          permissionStatus = 'denied';
-          message = 'Location unavailable. Please check your GPS settings.';
-          break;
-        case 'timeout':
-          permissionStatus = 'denied';
-          message = 'Location request timed out. Please try again.';
-          break;
-        default:
-          permissionStatus = 'denied';
-          message = 'Failed to get location. Please try again.';
-      }
-      
-      setLocationPermission({
-        status: permissionStatus,
-        canRequest: true,
-        message
-      });
-      
-      setLocationUI(prev => ({
-        ...prev,
-        isRequesting: false,
-        error: message
-      }));
-      
-      // Create fallback location context for AI
-      try {
-        const fallbackContext = await locationService.getLocationContext({
-          latitude: 0,
-          longitude: 0,
-          accuracy: 0,
-          timestamp: Date.now()
-        });
-        setLocationContext(fallbackContext);
-        v2vService.sendLocationContext(fallbackContext);
-      } catch (fallbackError) {
-        console.warn('Failed to create fallback location context:', fallbackError);
-      }
-      
-      return false;
-    }
-  }, [locationSettings]);
-
-  const startLocationWatching = useCallback(() => {
-    if (locationUI.isWatching) return;
-    
-    setLocationUI(prev => ({ ...prev, isWatching: true, error: null }));
-    
-    const watchId = locationService.watchLocation(
-      async (location) => {
-        setLocationUI(prev => ({
-          ...prev,
-          lastUpdate: new Date(),
-          error: null
-        }));
-        
-        if (locationSettings.autoUpdateContext) {
-          try {
-            const context = await locationService.getLocationContext(location);
-            setLocationContext(context);
-            v2vService.sendLocationContext(context);
-          } catch (error) {
-            console.error('Failed to update location context:', error);
-          }
-        }
-      },
-      (error) => {
-        console.error('Location watch error:', error);
-        setLocationUI(prev => ({
-          ...prev,
-          isWatching: false,
-          error: error.message
-        }));
-      },
-      {
-        enableHighAccuracy: locationSettings.enableHighAccuracy,
-        timeout: locationSettings.timeout,
-        maximumAge: locationSettings.maximumAge
-      }
-    );
-    
-    if (watchId === -1) {
-      setLocationUI(prev => ({
-        ...prev,
-        isWatching: false,
-        error: 'Location watching not supported'
-      }));
-    }
-  }, [locationSettings, locationUI.isWatching]);
-
-  const stopLocationWatching = useCallback(() => {
-    locationService.stopWatchingLocation();
-    setLocationUI(prev => ({ ...prev, isWatching: false }));
-  }, []);
-
-
-
-  // Convert text to phonemes (simplified) - supports both English and Kazakh
-  const textToPhonemes = (word: string): string[] => {
-    const phonemes: string[] = [];
-    
-    for (let i = 0; i < word.length; i++) {
-      const char = word[i].toLowerCase();
-      const nextChar = word[i + 1]?.toLowerCase();
-      
-      // English vowels
-      if ('aeiou'.includes(char)) {
-        if (char === 'a') phonemes.push('aa');
-        else if (char === 'e') phonemes.push('E');
-        else if (char === 'i') phonemes.push('I');
-        else if (char === 'o') phonemes.push('O');
-        else if (char === 'u') phonemes.push('U');
-      }
-      // Kazakh vowels (Cyrillic)
-      else if ('аәеиоөұүыі'.includes(char)) {
-        if (char === 'а' || char === 'ә') phonemes.push('aa');
-        else if (char === 'е') phonemes.push('E');
-        else if (char === 'и' || char === 'ы' || char === 'і') phonemes.push('I');
-        else if (char === 'о' || char === 'ө') phonemes.push('O');
-        else if (char === 'ұ' || char === 'ү') phonemes.push('U');
-      }
-      // English consonants
-      else if (char === 'p' || char === 'b' || char === 'm') {
-        phonemes.push('PP');
-      } else if (char === 'f' || char === 'v') {
-        phonemes.push('FF');
-      } else if (char === 't' || char === 'd') {
-        phonemes.push('DD');
-      } else if (char === 'k' || char === 'g') {
-        phonemes.push('kk');
-      } else if (char === 's' || char === 'z') {
-        phonemes.push('SS');
-      } else if (char === 'n' || char === 'ng') {
-        phonemes.push('nn');
-      } else if (char === 'r') {
-        phonemes.push('RR');
-      } else if (char === 'l') {
-        phonemes.push('nn'); // Similar to 'n'
-      } else if (char === 'w') {
-        phonemes.push('U'); // Similar to 'u'
-      } else if (char === 'y') {
-        phonemes.push('I'); // Similar to 'i'
-      } else if (char === 'h') {
-        phonemes.push('aa'); // Open mouth for 'h'
-      } else if (char === 'c' || char === 'q') {
-        if (nextChar === 'h') {
-          phonemes.push('CH');
-          i++; // Skip next character
-        } else {
-          phonemes.push('kk');
-        }
-      } else if (char === 's' && nextChar === 'h') {
-        phonemes.push('CH');
-        i++; // Skip next character
-      } else if (char === 't' && nextChar === 'h') {
-        phonemes.push('TH');
-        i++; // Skip next character
-      }
-      // Kazakh consonants (Cyrillic)
-      else if (char === 'п' || char === 'б' || char === 'м') {
-        phonemes.push('PP');
-      } else if (char === 'ф' || char === 'в') {
-        phonemes.push('FF');
-      } else if (char === 'т' || char === 'д') {
-        phonemes.push('DD');
-      } else if (char === 'к' || char === 'г' || char === 'қ' || char === 'ғ') {
-        phonemes.push('kk');
-      } else if (char === 'с' || char === 'з' || char === 'ц') {
-        phonemes.push('SS');
-      } else if (char === 'н' || char === 'ң') {
-        phonemes.push('nn');
-      } else if (char === 'р') {
-        phonemes.push('RR');
-      } else if (char === 'л') {
-        phonemes.push('nn'); // Similar to 'n'
-      } else if (char === 'ш' || char === 'щ' || char === 'ч' || char === 'ж') {
-        phonemes.push('CH');
-      } else if (char === 'х' || char === 'һ') {
-        phonemes.push('aa'); // Open mouth for 'h'
-      } else if (char === 'й') {
-        phonemes.push('I'); // Similar to 'i'
-      } else {
-        // Default to silence for unknown characters
-        phonemes.push('sil');
-      }
-    }
-    
-    return phonemes;
-  };
-
-  // Convert phoneme to viseme
-  const phonemeToViseme = (phoneme: string): string => {
-    const visemeMap: { [key: string]: string } = {
-      'aa': 'aa', 'E': 'E', 'I': 'I', 'O': 'O', 'U': 'U',
-      'PP': 'PP', 'FF': 'FF', 'DD': 'DD', 'kk': 'kk',
-      'SS': 'SS', 'nn': 'nn', 'RR': 'RR', 'CH': 'CH', 'TH': 'TH',
-      'sil': 'sil'
-    };
-    
-    return visemeMap[phoneme] || 'sil';
-  };
-
-
-  // Play audio with lip sync synchronization
-  const playAudioWithLipSync = (audioData: string, lipSyncData: LipSyncData) => {
-    try {
-      // Create audio element
-      const audio = new Audio(`data:audio/wav;base64,${audioData}`);
-      
-      // Set up audio event listeners
-      audio.addEventListener('loadeddata', () => {
-        console.log('Audio loaded, starting lip sync');
-        setCurrentLipSyncData(lipSyncData);
-        setProcessingState('playing');
-      });
-      
-      audio.addEventListener('ended', () => {
-        console.log('Audio ended, stopping lip sync');
-        setCurrentLipSyncData(null);
-        setProcessingState('idle');
-      });
-      
-      audio.addEventListener('error', (e) => {
-        console.error('Audio playback error:', e);
-        setError('Ошибка воспроизведения аудио');
-        setProcessingState('idle');
-      });
-      
-      // Start playing
-      audio.play().catch((error) => {
-        console.error('Failed to play audio:', error);
-        setError('Не удалось воспроизвести аудио');
-        setProcessingState('idle');
-      });
-      
-    } catch (error) {
-      console.error('Error setting up audio playback:', error);
-      setError('Ошибка настройки воспроизведения аудио');
-    }
-  };
-
-  // Enhanced lip sync data generation with audio analysis
-  const generateEnhancedLipSyncData = (text: string, audioDuration?: number): LipSyncData => {
-    const words = text.toLowerCase().split(/\s+/);
-    const visemes: string[] = [];
-    const times: number[] = [];
-    const durations: number[] = [];
-    const timing: VisemeData[] = [];
-    
-    let currentTime = 0;
-    const totalTextDuration = audioDuration || (text.length * 0.08); // Estimate if no audio duration
-    
-    words.forEach((word, wordIndex) => {
-      const phonemes = textToPhonemes(word);
-      const wordDuration = (word.length / text.length) * totalTextDuration;
-      const phonemeDuration = wordDuration / phonemes.length;
-      
-      phonemes.forEach((phoneme) => {
-        const viseme = phonemeToViseme(phoneme);
-        const duration = Math.max(0.05, phonemeDuration * 0.8); // Ensure minimum duration
-        
-        visemes.push(viseme);
-        times.push(currentTime);
-        durations.push(duration);
-        timing.push({
-          viseme: viseme,
-          start_time: currentTime,
-          duration: duration
-        });
-        
-        currentTime += duration;
-      });
-      
-      // Add pause between words
-      if (wordIndex < words.length - 1) {
-        const pauseDuration = 0.08;
-        visemes.push('sil');
-        times.push(currentTime);
-        durations.push(pauseDuration);
-        timing.push({
-          viseme: 'sil',
-          start_time: currentTime,
-          duration: pauseDuration
-        });
-        currentTime += pauseDuration;
-      }
-    });
-    
-    return {
-      visemes,
-      times,
-      durations,
-      timing
-    };
-  };
 
   // Memoized avatar configuration to prevent unnecessary re-renders
   const avatarConfig: AvatarConfig = useMemo(() => ({
@@ -476,8 +135,6 @@ const V2V: React.FC = () => {
         v2vService.setOnVoiceResponse((response: VoiceResponseMessage) => {
           console.log('Voice response received:', response);
           
-          // Voice response processed
-
           // Set avatar mood based on response content (simple sentiment analysis)
           // Support both English and Kazakh keywords
           const responseText = response.ai_response.toLowerCase();
@@ -497,11 +154,16 @@ const V2V: React.FC = () => {
           }
           
           // Create enhanced lip sync data from response text
-          // This simulates phoneme-to-viseme conversion with better timing
           const lipSyncData = generateEnhancedLipSyncData(response.ai_response);
           
           // Play audio with synchronized lip sync
-          playAudioWithLipSync(response.audio_response, lipSyncData);
+          playAudioWithLipSync(
+            response.audio_response, 
+            lipSyncData,
+            () => setProcessingState('playing'),
+            () => setProcessingState('idle'),
+            (error) => setError(error)
+          );
         });
 
         v2vService.setOnProcessingStatus((status) => {
@@ -534,7 +196,10 @@ const V2V: React.FC = () => {
           
           // Request location permission after successful connection
           try {
-            await requestLocationPermission();
+            const result = await requestLocationPermission();
+            if (result.success && result.context) {
+              v2vService.sendLocationContext(result.context);
+            }
           } catch (error) {
             console.warn('Failed to get location on initialization:', error);
             // Don't show error to user on initialization, just log it
@@ -588,6 +253,21 @@ const V2V: React.FC = () => {
     }
   };
 
+  const handleStartLocationWatching = () => {
+    startLocationWatching();
+  };
+
+  const handleStopLocationWatching = () => {
+    stopLocationWatching();
+  };
+
+  const handleRequestLocationPermission = async () => {
+    const result = await requestLocationPermission();
+    if (result.success && result.context) {
+      v2vService.sendLocationContext(result.context);
+    }
+  };
+
   // Chat functions
   const addMessage = useCallback((message: Omit<ChatMessage, 'id' | 'timestamp'>) => {
     const newMessage: ChatMessage = {
@@ -614,7 +294,6 @@ const V2V: React.FC = () => {
       });
 
       // Add typing indicator
-      setIsTyping(true);
       addMessage({
         type: 'ai',
         content: '',
@@ -628,17 +307,15 @@ const V2V: React.FC = () => {
         
         // Simulate AI response (replace with actual response handling)
         setTimeout(() => {
-          setIsTyping(false);
           setChatMessages(prev => prev.filter(msg => !msg.isTyping));
           addMessage({
             type: 'ai',
-            content: 'Спасибо за ваше сообщение! Я обрабатываю ваш запрос...',
+            content: 'Thank you for your message! I am processing your request...',
           });
         }, 2000);
       } else {
-        setIsTyping(false);
         setChatMessages(prev => prev.filter(msg => !msg.isTyping));
-        setError('Не удалось отправить сообщение');
+        setError('Failed to send message');
       }
     }
   };
@@ -650,7 +327,6 @@ const V2V: React.FC = () => {
         content: message.trim(),
       });
 
-      setIsTyping(true);
       addMessage({
         type: 'ai',
         content: '',
@@ -662,17 +338,15 @@ const V2V: React.FC = () => {
         setError(null);
         
         setTimeout(() => {
-          setIsTyping(false);
           setChatMessages(prev => prev.filter(msg => !msg.isTyping));
           addMessage({
             type: 'ai',
-            content: 'Я получил ваше сообщение и обрабатываю его...',
+            content: 'I received your message and I am processing it...',
           });
         }, 2000);
       } else {
-        setIsTyping(false);
         setChatMessages(prev => prev.filter(msg => !msg.isTyping));
-        setError('Не удалось отправить сообщение');
+        setError('Failed to send message');
       }
     }
   }, [addMessage, locationContext, language]);
@@ -683,10 +357,10 @@ const V2V: React.FC = () => {
     return (
       <div className="min-h-screen bg-transparent flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Инициализация голосового сервиса...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Initializing AsylAI service...</p>
           {error && (
-            <p className="text-red-600 mt-2">{error}</p>
+            <p className="text-red-500 mt-2">{error}</p>
           )}
         </div>
       </div>
@@ -709,7 +383,7 @@ const V2V: React.FC = () => {
           transition={{ duration: 0.6, delay: 0.1 }}
         >
           <motion.h1 
-            className={`font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 bg-clip-text text-transparent mb-4 ${
+            className={`font-bold text-gray-800 mb-4 ${
               deviceInfo.isKiosk 
                 ? 'text-5xl sm:text-6xl' 
                 : deviceInfo.isMobile
@@ -720,10 +394,10 @@ const V2V: React.FC = () => {
             animate={{ scale: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            Voice to Voice AI
+            AsylAI
           </motion.h1>
           <motion.p 
-            className={`text-muted-foreground ${
+            className={`text-gray-600 ${
               deviceInfo.isKiosk 
                 ? 'text-xl sm:text-2xl' 
                 : deviceInfo.isMobile
@@ -734,7 +408,7 @@ const V2V: React.FC = () => {
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.3 }}
           >
-            Общайтесь с ИИ через голос в реальном времени
+            Communicate with AI through voice in real-time
           </motion.p>
         </motion.div>
 
@@ -745,133 +419,50 @@ const V2V: React.FC = () => {
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.4 }}
         >
-          {/* Location Card */}
-          <motion.div 
-            className="group relative rounded-2xl border border-border/20 p-4 bg-card/50 backdrop-blur-sm hover:bg-card/80 transition-all duration-300"
-            whileHover={{ y: -5, scale: 1.02 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          >
-            <div className="flex items-center space-x-3">
-              <motion.div
-                className="p-2 rounded-full bg-muted/50"
-                whileHover={{ rotate: 360 }}
-                transition={{ duration: 0.5 }}
-              >
-                {locationPermission.status === 'granted' ? (
-                  <MapPin className="w-5 h-5 text-green-500" />
-                ) : locationPermission.status === 'denied' ? (
-                  <X className="w-5 h-5 text-red-500" />
-                ) : (
-                  <HelpCircle className="w-5 h-5 text-yellow-500" />
-                )}
-              </motion.div>
-              <div className="flex-1">
-                <div className={`font-medium text-sm ${
-                  locationPermission.status === 'granted' ? 'text-green-600' :
-                  locationPermission.status === 'denied' ? 'text-red-600' : 'text-yellow-600'
-                }`}>
-                  {locationContext ? locationContext.city.name : 'Местоположение неизвестно'}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {locationContext ? locationContext.city.country : locationPermission.message}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Tracking Card */}
-          <motion.div 
-            className="group relative rounded-2xl border border-border/20 p-4 bg-card/50 backdrop-blur-sm hover:bg-card/80 transition-all duration-300"
-            whileHover={{ y: -5, scale: 1.02 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          >
-            <div className="flex items-center space-x-3">
-              <motion.div
-                className="p-2 rounded-full bg-muted/50"
-                animate={{ scale: locationUI.isWatching ? [1, 1.2, 1] : 1 }}
-                transition={{ duration: 2, repeat: locationUI.isWatching ? Infinity : 0 }}
-              >
-                {locationUI.isWatching ? (
-                  <Eye className="w-5 h-5 text-blue-500" />
-                ) : (
-                  <EyeOff className="w-5 h-5 text-muted-foreground" />
-                )}
-              </motion.div>
-              <div className="flex-1">
-                <div className="font-medium text-sm text-foreground">
-                  {locationUI.isWatching ? 'Отслеживание активно' : 'Отслеживание отключено'}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {locationUI.lastUpdate ? 
-                    `Обновлено: ${locationUI.lastUpdate.toLocaleTimeString()}` : 
-                    'Нет данных'
-                  }
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Language Card */}
-          <motion.div 
-            className="group relative rounded-2xl border border-border/20 p-4 bg-card/50 backdrop-blur-sm hover:bg-card/80 transition-all duration-300"
-            whileHover={{ y: -5, scale: 1.02 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          >
-            <div className="flex items-center space-x-3">
-              <motion.div
-                className="p-2 rounded-full bg-muted/50"
-                whileHover={{ rotate: 360 }}
-                transition={{ duration: 0.5 }}
-              >
-                <Globe className="w-5 h-5 text-blue-500" />
-              </motion.div>
-              <div className="flex-1">
-                <div className="font-medium text-sm text-foreground mb-2">
-                  Язык ответа
-                </div>
-                <LanguageSelector 
-                  value={language}
-                  onChange={(lang) => {
-                    // Handle language change
-                    console.log('Language changed to:', lang);
-                  }}
-                />
-              </div>
-            </div>
-          </motion.div>
+          <LocationCard 
+            locationContext={locationContext}
+            locationPermission={locationPermission}
+          />
+          <TrackingCard locationUI={locationUI} />
+          <LanguageCard 
+            language={language}
+            onLanguageChange={(lang) => {
+              console.log('Language changed to:', lang);
+            }}
+          />
         </motion.div>
 
           {locationUI.showLocationInfo && locationContext && (
-            <div className="mt-4 p-4 bg-transparent rounded-lg">
-              <h3 className="font-semibold mb-3">Информация о городе</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div className="mt-4 p-4 bg-white/30 backdrop-blur-sm border border-gray-200/30 rounded-lg shadow-sm">
+              <h3 className="font-bold text-gray-800 mb-3">City Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
                 <div>
-                  <strong>Город:</strong> {locationContext.city.name}
+                  <strong className="text-gray-800">City:</strong> {locationContext.city.name}
                 </div>
                 <div>
-                  <strong>Страна:</strong> {locationContext.city.country}
+                  <strong className="text-gray-800">Country:</strong> {locationContext.city.country}
                 </div>
                 <div>
-                  <strong>Часовой пояс:</strong> {locationContext.timezone}
+                  <strong className="text-gray-800">Timezone:</strong> {locationContext.timezone}
                 </div>
                 <div>
-                  <strong>Местное время:</strong> {locationContext.localTime}
+                  <strong className="text-gray-800">Local Time:</strong> {locationContext.localTime}
                 </div>
                 <div>
-                  <strong>Координаты:</strong> {locationContext.city.coordinates.lat.toFixed(4)}, {locationContext.city.coordinates.lon.toFixed(4)}
+                  <strong className="text-gray-800">Coordinates:</strong> {locationContext.city.coordinates.lat.toFixed(4)}, {locationContext.city.coordinates.lon.toFixed(4)}
                 </div>
                 <div>
-                  <strong>Достопримечательности:</strong> {locationContext.attractions.length}
+                  <strong className="text-gray-800">Attractions:</strong> {locationContext.attractions.length}
                 </div>
               </div>
               
               {locationContext.attractions.length > 0 && (
                 <div className="mt-4">
-                  <h4 className="font-semibold mb-2">Популярные места:</h4>
+                  <h4 className="font-bold text-gray-800 mb-2">Popular Places:</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {locationContext.attractions.slice(0, 4).map((attraction, index) => (
-                      <div key={index} className="p-2 bg-transparent backdrop-blur-sm border border-gray-200/20 rounded">
-                        <div className="font-medium text-sm">{attraction.name}</div>
+                      <div key={index} className="p-2 bg-white/50 border border-gray-200 rounded">
+                        <div className="font-medium text-sm text-gray-800">{attraction.name}</div>
                         <div className="text-xs text-gray-600">{attraction.description}</div>
                         {attraction.rating && (
                           <div className="text-xs text-yellow-600">⭐ {attraction.rating}</div>
@@ -885,11 +476,10 @@ const V2V: React.FC = () => {
           )}
 
           {locationUI.error && (
-            <div className="mt-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded">
+            <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
               {locationUI.error}
             </div>
           )}
-        </div>
 
 
 
@@ -911,65 +501,13 @@ const V2V: React.FC = () => {
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* AI Avatar Section */}
-          <motion.div 
-            className="relative"
-            initial={{ x: -50, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-          >
-            <div className="group relative rounded-3xl border border-border/20 p-6 bg-card/30 backdrop-blur-sm hover:bg-card/50 transition-all duration-300">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
-                  <Bot className="w-5 h-5 text-blue-500" />
-                  AI Avatar
-                </h2>
-                <motion.div
-                  className="w-3 h-3 rounded-full bg-green-500"
-                  animate={{ 
-                    scale: processingState === 'playing' ? [1, 1.2, 1] : 1,
-                    opacity: processingState === 'playing' ? [1, 0.5, 1] : 1
-                  }}
-                  transition={{ duration: 1, repeat: processingState === 'playing' ? Infinity : 0 }}
-                />
-              </div>
-              
-              <div className="relative flex justify-center items-center">
-                <motion.div 
-                  className={`relative ${
-                    deviceInfo.isKiosk ? 'w-80 h-80' : 
-                    deviceInfo.isMobile ? 'w-64 h-64' : 'w-72 h-72'
-                  }`}
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                >
-                  {/* Remove background - make it transparent */}
-                  <div className="relative w-full h-full rounded-2xl overflow-hidden">
-                    <TalkingHead
-                      className="w-full h-full object-contain"
-                      lipSyncData={memoizedLipSyncData}
-                      isPlaying={processingState === 'playing'}
-                      avatarConfig={avatarConfig}
-                      mood={avatarMood}
-                      options={memoizedAvatarOptions}
-                    />
-                  </div>
-                  
-                  {/* Floating particles effect */}
-                  <motion.div
-                    className="absolute inset-0 pointer-events-none"
-                    animate={{
-                      background: [
-                        "radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)",
-                        "radial-gradient(circle at 80% 80%, rgba(147, 51, 234, 0.1) 0%, transparent 50%)",
-                        "radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)"
-                      ]
-                    }}
-                    transition={{ duration: 4, repeat: Infinity }}
-                  />
-                </motion.div>
-              </div>
-            </div>
-          </motion.div>
+          <AvatarSection
+            processingState={processingState}
+            currentLipSyncData={memoizedLipSyncData}
+            avatarConfig={avatarConfig}
+            avatarMood={avatarMood}
+            memoizedAvatarOptions={memoizedAvatarOptions}
+          />
 
           {/* Chat History Section */}
           <motion.div 
@@ -978,7 +516,7 @@ const V2V: React.FC = () => {
             animate={{ x: 0, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.6 }}
           >
-            <div className="h-[500px] rounded-3xl border border-border/20 bg-card/30 backdrop-blur-sm hover:bg-card/50 transition-all duration-300">
+            <div className="h-[500px] rounded-lg border border-gray-200 bg-white/30 backdrop-blur-sm hover:bg-white/40 transition-all duration-300">
               <ChatHistory
                 messages={chatMessages}
                 onSendMessage={handleChatMessage}
@@ -990,112 +528,23 @@ const V2V: React.FC = () => {
         </div>
 
         {/* Voice Controls */}
-        <motion.div 
-          className="rounded-3xl border border-border/20 p-6 bg-card/30 backdrop-blur-sm hover:bg-card/50 transition-all duration-300 mb-6"
-          initial={{ y: 50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.7 }}
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
-              <Mic className="w-5 h-5 text-purple-500" />
-              Голосовое управление
-            </h2>
-            <motion.div
-              className="flex items-center gap-2"
-              animate={{ opacity: isRecording ? 1 : 0.5 }}
-            >
-              <div className={`w-2 h-2 rounded-full ${
-                isRecording ? 'bg-red-500 animate-pulse' : 
-                processingState === 'processing' ? 'bg-yellow-500 animate-pulse' :
-                processingState === 'playing' ? 'bg-blue-500 animate-pulse' : 'bg-gray-400'
-              }`} />
-              <span className="text-sm text-muted-foreground">
-                {isRecording ? 'Запись...' : 
-                 processingState === 'processing' ? 'Обработка...' :
-                 processingState === 'playing' ? 'Воспроизведение...' : 'Готов'}
-              </span>
-            </motion.div>
-          </div>
-
-          <div className="flex flex-col items-center gap-6">
-            {/* AI Voice Input Component */}
-            <motion.div 
-              className="w-full max-w-md"
-              whileHover={{ scale: 1.02 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            >
-              <AIVoiceInput
-                onStart={handleStartRecording}
-                onStop={handleStopRecording}
-                visualizerBars={48}
-                className="w-full"
-              />
-            </motion.div>
-            
-            {/* Control Buttons */}
-            {locationPermission.status === 'granted' && (
-              <div className="flex flex-wrap gap-3 justify-center">
-                <motion.button
-                  onClick={locationUI.isWatching ? stopLocationWatching : startLocationWatching}
-                  className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 flex items-center gap-2 ${
-                    locationUI.isWatching 
-                      ? 'bg-orange-500 hover:bg-orange-600 text-white' 
-                      : 'bg-green-500 hover:bg-green-600 text-white'
-                  }`}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  {locationUI.isWatching ? (
-                    <Pause className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                  <span>
-                    {locationUI.isWatching ? 'Остановить отслеживание' : 'Начать отслеживание'}
-                  </span>
-                </motion.button>
-                
-                <motion.button
-                  onClick={requestLocationPermission}
-                  disabled={locationUI.isRequesting}
-                  className="px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-all duration-200 flex items-center gap-2"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <RefreshCw className={`w-4 h-4 ${locationUI.isRequesting ? 'animate-spin' : ''}`} />
-                  <span>
-                    {locationUI.isRequesting ? 'Обновление...' : 'Обновить местоположение'}
-                  </span>
-                </motion.button>
-              </div>
-            )}
-          </div>
-        </motion.div>
+        <VoiceControls
+          isRecording={isRecording}
+          processingState={processingState}
+          locationPermission={locationPermission}
+          locationUI={locationUI}
+          onStartRecording={handleStartRecording}
+          onStopRecording={handleStopRecording}
+          onStartLocationWatching={handleStartLocationWatching}
+          onStopLocationWatching={handleStopLocationWatching}
+          onRequestLocationPermission={handleRequestLocationPermission}
+        />
 
         {/* Text Input */}
-        <motion.div 
-          className="rounded-3xl border border-border/20 p-6 bg-card/30 backdrop-blur-sm hover:bg-card/50 transition-all duration-300"
-          initial={{ y: 50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-        >
-          <div className="flex items-center gap-2 mb-4">
-            <User className="w-5 h-5 text-green-500" />
-            <h2 className="text-xl font-semibold text-foreground">Текстовый ввод</h2>
-          </div>
-          <PlaceholdersAndVanishInput
-            placeholders={[
-              "Введите ваше сообщение...",
-              "Спросите что-нибудь у ИИ",
-              "Расскажите о погоде",
-              "Как дела?",
-              "Что нового?"
-            ]}
-            onChange={(e) => setTextInput(e.target.value)}
-            onSubmit={handleTextSubmit}
-          />
-        </motion.div>
+        <TextInputSection
+          onTextChange={(e) => setTextInput(e.target.value)}
+          onSubmit={handleTextSubmit}
+        />
       </div>
     </motion.div>
   );

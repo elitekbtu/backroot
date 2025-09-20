@@ -21,7 +21,7 @@ const MainNavbar: React.FC = () => {
     { path: '/dashboard', label: 'Dashboard' },
     { path: '/dashboard/weather', label: 'Weather' },
     { path: '/dashboard/ar', label: 'AR Coins' },
-    { path: '/dashboard/v2v', label: 'Voice AI' },
+    { path: '/dashboard/v2v', label: 'AsylAI' },
     { path: '/dashboard/poi', label: 'POI Collector' },
   ];
 
@@ -35,7 +35,7 @@ const MainNavbar: React.FC = () => {
       <div className="flex items-center justify-between px-6 py-3 bg-transparent w-full max-w-4xl relative z-10">
         <div className="flex items-center">
           <Link to="/dashboard" className="font-medium text-black text-xl">
-            Back<span className="font-normal">Root</span>
+            Back<span className="font-normal">2Roots</span>
           </Link>
         </div>
         

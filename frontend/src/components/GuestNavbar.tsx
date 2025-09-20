@@ -23,7 +23,7 @@ const GuestNavbar: React.FC = () => {
               deviceInfo.isKiosk ? 'text-3xl' : 
               deviceInfo.isMobile ? 'text-xl' : 'text-2xl'
             }`}>
-              Back<span className="font-normal">Root</span>
+              Back<span className="font-normal">2Roots</span>
             </Link>
           </div>
           

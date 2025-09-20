@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-export function BackRootFooter() {
+export function Back2RootsFooter() {
 	const year = new Date().getFullYear();
 
 	const company = [
@@ -49,7 +49,7 @@ export function BackRootFooter() {
 		},
 		{
 			title: 'Contact Support',
-			href: 'mailto:support@backroot.com',
+			href: 'mailto:support@back2roots.com',
 		},
 		{
 			title: 'Community',
@@ -187,7 +187,7 @@ export function BackRootFooter() {
 				<div className="bg-border absolute inset-x-0 h-px w-full" />
 				<div className="flex max-w-4xl flex-col justify-between gap-2 pt-2 pb-5">
 					<p className="text-muted-foreground text-center font-thin">
-						© <a href="https://backroot.com" className="hover:underline">BackRoot</a>. All rights
+						© <a href="https://back2roots.com" className="hover:underline">Back2Roots</a>. All rights
 						reserved {year}
 					</p>
 				</div>

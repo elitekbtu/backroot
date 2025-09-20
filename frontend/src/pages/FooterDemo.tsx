@@ -1,6 +1,6 @@
 import React from 'react';
 import { MinimalFooter } from '@/components/ui/minimal-footer';
-import { BackRootFooter } from '@/components/ui/backroot-footer';
+import { Back2RootsFooter } from '@/components/ui/backroot-footer';
 import { ArrowDownIcon } from 'lucide-react';
 
 const FooterDemo: React.FC = () => {
@@ -28,8 +28,8 @@ const FooterDemo: React.FC = () => {
       
       <div className="py-16">
         <div className="max-w-4xl mx-auto px-4">
-          <h2 className="text-2xl font-semibold mb-8 text-center">BackRoot Footer</h2>
-          <BackRootFooter />
+          <h2 className="text-2xl font-semibold mb-8 text-center">Back2Roots Footer</h2>
+          <Back2RootsFooter />
         </div>
       </div>
     </div>

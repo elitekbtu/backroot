@@ -19,13 +19,13 @@ interface LanguageSelectorProps {
 }
 
 const languages: Language[] = [
-  { code: 'ru', name: 'Russian', flag: '🇷🇺', nativeName: 'Русский' },
   { code: 'en', name: 'English', flag: '🇺🇸', nativeName: 'English' },
+  { code: 'ru', name: 'Russian', flag: '🇷🇺', nativeName: 'Русский' },
   { code: 'kk', name: 'Kazakh', flag: '🇰🇿', nativeName: 'Қазақша' },
 ];
 
 export function LanguageSelector({ 
-  value = 'ru', 
+  value = 'en', 
   onChange, 
   className 
 }: LanguageSelectorProps) {
@@ -73,11 +73,11 @@ export function LanguageSelector({
         animate={{
           opacity: isOpen ? 1 : 0,
           scale: isOpen ? 1 : 0.95,
-          y: isOpen ? 0 : -10,
+          y: isOpen ? 0 : 10,
         }}
         transition={{ duration: 0.2 }}
         className={cn(
-          "absolute top-full left-0 right-0 mt-1 z-50",
+          "absolute bottom-full left-0 right-0 mb-1 z-50",
           "bg-background/95 backdrop-blur-md border border-border/30 rounded-lg shadow-lg",
           isOpen ? "pointer-events-auto" : "pointer-events-none"
         )}

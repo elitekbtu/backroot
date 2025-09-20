@@ -3,7 +3,7 @@ import { Mic, Camera, MapPin, Cloud, Settings, Sparkles } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { FeatureCard } from '@/components/ui/grid-feature-cards';
 
-const backrootFeatures = [
+const back2RootsFeatures = [
 	{
 		title: 'Voice AI',
 		icon: Mic,
@@ -36,7 +36,7 @@ const backrootFeatures = [
 	},
 ];
 
-export function BackRootFeatures() {
+export function Back2RootsFeatures() {
 	return (
 		<section className="py-8 md:py-16">
 			<div className="mx-auto w-full max-w-5xl px-4">
@@ -44,7 +44,7 @@ export function BackRootFeatures() {
 					delay={0.2}
 					className="grid grid-cols-1 divide-x divide-y divide-dashed border border-dashed sm:grid-cols-2 md:grid-cols-3"
 				>
-					{backrootFeatures.map((feature, i) => (
+					{back2RootsFeatures.map((feature, i) => (
 						<FeatureCard key={i} feature={feature} />
 					))}
 				</AnimatedContainer>

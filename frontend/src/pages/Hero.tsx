@@ -3,12 +3,12 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { BackgroundPaths } from '@/components/ui/background-paths';
-import { BackRootFooter } from '@/components/ui/backroot-footer';
+import { Back2RootsFooter } from '@/components/ui/backroot-footer';
 import { GlowingEffect } from '@/components/ui/glowing-effect';
 import { Mic, Camera, Cloud } from 'lucide-react';
 
 const Hero: React.FC = () => {
-  const words = ["Back", "Roots"];
+  const words = ["Back2Roots"];
   
   // Animation variants
   const containerVariants = {
@@ -217,7 +217,7 @@ const Hero: React.FC = () => {
       </div>
       
       {/* Footer */}
-      <BackRootFooter />
+      <Back2RootsFooter />
     </div>
   );
 };
