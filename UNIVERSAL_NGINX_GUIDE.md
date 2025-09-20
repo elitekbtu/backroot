@@ -54,7 +54,7 @@ check-ssl.sh               # 🔍 Проверка конфигурации
 ./switch-mode.sh local
 
 # Или вручную
-docker-compose up -d
+docker compose up -d
 ```
 
 **Доступ:**
@@ -136,7 +136,7 @@ nano init-letsencrypt.sh
 curl -I http://localhost
 
 # Проверка API
-curl http://localhost/api/health
+curl http://localhost/api/
 
 # Проверка статики
 curl -I http://localhost/coin.glb
@@ -212,7 +212,7 @@ location /api/v2/ {
    ```bash
    # Временно закомментируйте HTTPS default_server блок
    # или используйте dev версию
-   docker-compose -f docker-compose.dev.yml up -d
+   docker compose up -d
    ```
 
 2. **Конфликт портов**:
@@ -226,10 +226,10 @@ location /api/v2/ {
 
 ```bash
 # Проверьте что backend запущен
-docker-compose -f docker-compose.dev.yml ps
+docker compose ps
 
 # Проверьте логи
-docker-compose -f docker-compose.dev.yml logs backend
+docker compose logs backend
 ```
 
 ### Проблема: SSL не работает на production

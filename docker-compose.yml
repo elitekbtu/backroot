@@ -34,8 +34,6 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./ssl:/etc/ssl/certs:ro
-      - ./ssl:/etc/ssl/private:ro
       - certbot-etc:/etc/letsencrypt
       - certbot-var:/var/lib/letsencrypt
       - web-root:/var/www/html
@@ -49,7 +47,7 @@ services:
       - certbot-etc:/etc/letsencrypt
       - certbot-var:/var/lib/letsencrypt
       - web-root:/var/www/html
-    command: certonly --webroot --webroot-path=/var/www/html --email your-email@example.com --agree-tos --no-eff-email --keep-until-expiring -d theb2r.com -d www.theb2r.com
+    command: certonly --webroot --webroot-path=/var/www/html --email team@theb2r.com --agree-tos --no-eff-email --keep-until-expiring -d theb2r.com -d www.theb2r.com
 
 volumes:
   postgres_data:

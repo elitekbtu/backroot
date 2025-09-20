@@ -23,11 +23,11 @@ check_local() {
     echo "🏠 === LOCAL DEVELOPMENT CHECK ==="
     
     # Check if services are running
-    if docker-compose ps 2>/dev/null | grep -q "Up"; then
+    if docker compose ps 2>/dev/null | grep -q "Up"; then
         echo "✅ Docker services are running"
     else
         echo "❌ Docker services not running"
-        echo "   Run: docker-compose up -d"
+        echo "   Run: docker compose up -d"
         return 1
     fi
     
@@ -111,13 +111,13 @@ check_production() {
 
     # Check Docker services
     echo "5. Checking Docker services..."
-    if docker-compose ps | grep -q "frontend.*Up"; then
+    if docker compose ps | grep -q "frontend.*Up"; then
         echo "✅ Frontend service is running"
     else
         echo "❌ Frontend service is not running"
     fi
 
-    if docker-compose ps | grep -q "backend.*Up"; then
+    if docker compose ps | grep -q "backend.*Up"; then
         echo "✅ Backend service is running"
     else
         echo "❌ Backend service is not running"

@@ -79,7 +79,7 @@ curl -I https://theb2r.com
 
 **Nginx не стартует?**
 ```bash
-docker-compose logs frontend
+docker compose logs frontend
 ```
 
 **SSL не работает?**

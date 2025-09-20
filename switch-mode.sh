@@ -32,11 +32,11 @@ switch_to_local() {
     
     # Stop any running services
     echo "Stopping any running services..."
-    docker-compose down 2>/dev/null || true
+    docker compose down 2>/dev/null || true
     
     # Start in local mode
     echo "Starting services in local mode..."
-    docker-compose up -d
+    docker compose up -d
     
     # Wait for services to start
     sleep 5
@@ -73,12 +73,12 @@ switch_to_production() {
     
     # Stop any running services
     echo "Stopping any running services..."
-    docker-compose down 2>/dev/null || true
+    docker compose down 2>/dev/null || true
     
     # Check if SSL certificates exist
     if docker volume ls | grep -q "certbot-etc"; then
         echo "📋 SSL certificates found, starting production services..."
-        docker-compose up -d
+        docker compose up -d
     else
         echo "🔒 No SSL certificates found, running initial SSL setup..."
         ./init-letsencrypt.sh
@@ -102,9 +102,9 @@ show_status() {
     echo "📊 Current Status:"
     echo
     
-    if docker-compose ps 2>/dev/null | grep -q "Up"; then
+    if docker compose ps 2>/dev/null | grep -q "Up"; then
         echo "✅ Services are running"
-        docker-compose ps
+        docker compose ps
         
         echo
         echo "🔍 Quick Tests:"

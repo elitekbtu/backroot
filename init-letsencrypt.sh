@@ -4,13 +4,13 @@
 # This script sets up SSL certificates for production deployment
 # The same nginx.conf works for both local development and production
 
-if ! [ -x "$(command -v docker-compose)" ]; then
-  echo 'Error: docker-compose is not installed.' >&2
+if ! [ -x "$(command -v docker compose)" ]; then
+  echo 'Error: docker compose is not installed.' >&2
   exit 1
 fi
 
 # Configuration
-email="your-email@example.com" # Replace with your actual email
+email="team@theb2r.com" # Replace with your actual email
 domains=(theb2r.com www.theb2r.com)
 rsa_key_size=4096
 staging=0 # Set to 1 for testing to avoid rate limits
@@ -33,14 +33,14 @@ fi
 if docker volume ls | grep -q "certbot-etc"; then
   read -p "Existing SSL certificates found. Replace them? (y/N) " decision
   if [ "$decision" != "Y" ] && [ "$decision" != "y" ]; then
-    echo "Keeping existing certificates. Run 'docker-compose up -d' to start."
+    echo "Keeping existing certificates. Run 'docker compose up -d' to start."
     exit 0
   fi
 fi
 
 echo "### Step 1: Creating temporary certificate ..."
 # Create temporary self-signed certificate so nginx can start
-docker-compose run --rm --entrypoint "sh -c '\
+docker compose run --rm --entrypoint "sh -c '\
   mkdir -p /etc/letsencrypt/live/${domains[0]} && \
   openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
     -keyout /etc/letsencrypt/live/${domains[0]}/privkey.pem \
@@ -48,11 +48,11 @@ docker-compose run --rm --entrypoint "sh -c '\
     -subj \"/CN=${domains[0]}\"'" certbot
 
 echo "### Step 2: Starting services ..."
-docker-compose up -d
+docker compose up -d
 sleep 10
 
 echo "### Step 3: Removing temporary certificate ..."
-docker-compose run --rm --entrypoint "sh -c '\
+docker compose run --rm --entrypoint "sh -c '\
   rm -rf /etc/letsencrypt/live/${domains[0]} && \
   rm -rf /etc/letsencrypt/archive/${domains[0]} && \
   rm -rf /etc/letsencrypt/renewal/${domains[0]}.conf'" certbot
@@ -72,7 +72,7 @@ if [ $staging != "0" ]; then
 fi
 
 # Request the real certificate
-docker-compose run --rm --entrypoint "sh -c '\
+docker compose run --rm --entrypoint "sh -c '\
   certbot certonly --webroot -w /var/www/html \
     $staging_arg \
     --email $email \
@@ -84,7 +84,7 @@ docker-compose run --rm --entrypoint "sh -c '\
 
 if [ $? -eq 0 ]; then
   echo "### Step 5: Reloading nginx with new certificate ..."
-  docker-compose exec frontend nginx -s reload
+  docker compose exec frontend nginx -s reload
   
   echo
   echo "✅ SSL certificate setup completed successfully!"
