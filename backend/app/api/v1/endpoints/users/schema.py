@@ -30,6 +30,11 @@ class UserResponse(UserBase):
         from_attributes = True
 
 
+class PasswordChange(BaseModel):
+    current_password: str = Field(..., min_length=6, max_length=100)
+    new_password: str = Field(..., min_length=6, max_length=100)
+
+
 class UserList(BaseModel):
     users: List[UserResponse]
     total: int

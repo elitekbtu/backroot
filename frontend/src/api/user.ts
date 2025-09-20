@@ -22,9 +22,7 @@ class UserService {
 
   // Update current user profile
   async updateCurrentUser(data: UserUpdateData): Promise<User> {
-    // First get the current user to get their ID
-    const currentUser = await this.getCurrentUser();
-    return apiClient.put<User>(`/users/${currentUser.id}`, data);
+    return apiClient.put<User>('/users/me', data);
   }
 
   // Update user by ID (admin only)
@@ -42,19 +40,22 @@ class UserService {
     return apiClient.delete<void>(`/users/${id}`);
   }
 
-  // Change password - not implemented in backend
-  async changePassword(_data: PasswordChangeData): Promise<void> {
-    throw new Error('Password change is not implemented in the backend');
+  // Change password
+  async changePassword(data: PasswordChangeData): Promise<User> {
+    return apiClient.post<User>('/users/me/change-password', {
+      current_password: data.current_password,
+      new_password: data.new_password
+    });
   }
 
-  // Deactivate user account - not implemented in backend
+  // Deactivate user account
   async deactivateUser(): Promise<void> {
-    throw new Error('Account deactivation is not implemented in the backend');
+    return apiClient.post<void>('/users/me/deactivate');
   }
 
-  // Reactivate user account - not implemented in backend
-  async reactivateUser(): Promise<void> {
-    throw new Error('Account reactivation is not implemented in the backend');
+  // Reactivate user account (admin only)
+  async reactivateUser(userId: number): Promise<User> {
+    return apiClient.post<User>(`/users/${userId}/reactivate`);
   }
 
   // Search users by username or email

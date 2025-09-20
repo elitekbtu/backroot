@@ -4,7 +4,7 @@ from typing import Optional
 
 from app.core import get_db, get_current_user
 from app.database.models import User
-from .schema import UserCreate, UserUpdate, UserResponse, UserList
+from .schema import UserCreate, UserUpdate, UserResponse, UserList, PasswordChange
 from .service import UserService
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -69,6 +69,54 @@ async def update_user(
     Update user by ID
     """
     return UserService.update_user(db, user_id, user_data)
+
+
+@router.put("/me", response_model=UserResponse)
+async def update_current_user(
+    user_data: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Update current user profile
+    """
+    return UserService.update_current_user(db, current_user, user_data)
+
+
+@router.post("/me/change-password", response_model=UserResponse)
+async def change_password(
+    password_data: PasswordChange,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Change current user password
+    """
+    return UserService.change_password(db, current_user, password_data)
+
+
+@router.post("/me/deactivate")
+async def deactivate_current_user(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Deactivate current user account
+    """
+    UserService.deactivate_current_user(db, current_user)
+    return {"message": "Account deactivated successfully"}
+
+
+@router.post("/{user_id}/reactivate", response_model=UserResponse)
+async def reactivate_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Reactivate user account (admin only)
+    """
+    return UserService.reactivate_user(db, user_id)
 
 
 @router.delete("/{user_id}")

@@ -4,9 +4,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 import math
 
-from app.core.security import get_password_hash
+from app.core.security import get_password_hash, verify_password
 from app.database.models import User
-from .schema import UserCreate, UserUpdate, UserResponse, UserList
+from .schema import UserCreate, UserUpdate, UserResponse, UserList, PasswordChange
 
 
 class UserService:
@@ -127,3 +127,63 @@ class UserService:
     def get_current_user_profile(db: Session, current_user: User) -> UserResponse:
         """Get current user profile"""
         return UserResponse.from_orm(current_user)
+    
+    @staticmethod
+    def change_password(db: Session, current_user: User, password_data: PasswordChange) -> UserResponse:
+        """Change user password"""
+        # Verify current password
+        if not verify_password(password_data.current_password, current_user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect"
+            )
+        
+        # Update password
+        current_user.hashed_password = get_password_hash(password_data.new_password)
+        
+        db.commit()
+        db.refresh(current_user)
+        
+        return UserResponse.from_orm(current_user)
+    
+    @staticmethod
+    def update_current_user(db: Session, current_user: User, user_data: UserUpdate) -> UserResponse:
+        """Update current user profile"""
+        update_data = user_data.dict(exclude_unset=True)
+        for field, value in update_data.items():
+            if field != 'is_active':  # Prevent users from changing their own active status
+                setattr(current_user, field, value)
+        
+        db.commit()
+        db.refresh(current_user)
+        
+        return UserResponse.from_orm(current_user)
+    
+    @staticmethod
+    def deactivate_current_user(db: Session, current_user: User) -> bool:
+        """Deactivate current user account"""
+        current_user.is_active = False
+        
+        db.commit()
+        return True
+    
+    @staticmethod
+    def reactivate_user(db: Session, user_id: int) -> UserResponse:
+        """Reactivate user account (admin only)"""
+        user = db.query(User).filter(
+            User.id == user_id, 
+            User.is_deleted == False
+        ).first()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        user.is_active = True
+        
+        db.commit()
+        db.refresh(user)
+        
+        return UserResponse.from_orm(user)
