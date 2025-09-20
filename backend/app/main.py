@@ -15,7 +15,9 @@ settings = get_settings()
 
 
 app = FastAPI(
-    title=settings.PROJECT_NAME
+    title=settings.PROJECT_NAME,
+    docs_url=None,  # Disable /docs
+    redoc_url=None  # Disable /redoc
 )
 
 app.add_middleware(
