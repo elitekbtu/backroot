@@ -77,7 +77,7 @@ class OpenAIClient:
             
             # Create a proper file-like object for OpenAI
             audio_file = io.BytesIO(audio_bytes)
-            audio_file.name = "audio.wav"  # OpenAI needs a filename
+            audio_file.name = "audio.wav"  # Audio is now processed to WAV format
             
             response = await self.client.audio.transcriptions.create(
                 model=self.stt_model,

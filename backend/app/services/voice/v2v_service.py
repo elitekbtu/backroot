@@ -130,8 +130,11 @@ class V2VWebSocketService:
             
             logger.info(f"Processing voice input for user {user_id}, audio data length: {len(audio_data) if audio_data else 0}")
             
-            # Process audio and convert to text using OpenAIClient directly
-            transcript = await self.openai_client.speech_to_text(audio_data)
+            # Process audio through audio processor to convert format
+            processed_audio = await self.audio_processor.prepare_audio_for_openai(audio_data)
+            
+            # Process audio and convert to text using OpenAIClient
+            transcript = await self.openai_client.speech_to_text(processed_audio)
             
             # Generate AI response using Groq LLM with OpenAI fallback
             try:
