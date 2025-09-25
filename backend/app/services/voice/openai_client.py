@@ -2,6 +2,19 @@ import logging
 import base64
 import io
 from typing import Dict, Any
+import io
+import base64
+import logging
+from typing import Dict, Any
+from openai import AsyncOpenAI
+from app.core.config import get_settings
+
+try:
+    # Optional dependency for transcoding if needed
+    from pydub import AudioSegment  # type: ignore
+    _PYDUB_AVAILABLE = True
+except Exception:
+    _PYDUB_AVAILABLE = False
 from openai import AsyncOpenAI
 
 from app.core.config import get_settings
@@ -67,30 +80,75 @@ class OpenAIClient:
             raise ValueError(f"AI response generation failed: {e}")
     
     async def speech_to_text(self, audio_data: str) -> str:
-        """Convert speech to text using OpenAI Whisper."""
+        """Convert speech to text using OpenAI Whisper with robust format detection.
+
+        Accepts base64-encoded audio and detects container/codec by magic bytes to set a
+        correct filename/extension that the API accepts. Falls back to transcoding to WAV
+        when the container cannot be reliably detected.
+        """
         try:
             logger.info(f"Starting speech-to-text, audio data length: {len(audio_data)}")
-            
+
             # Decode base64 audio
             audio_bytes = base64.b64decode(audio_data)
             logger.info(f"Decoded audio bytes length: {len(audio_bytes)}")
-            
-            # Create a proper file-like object for OpenAI
+
+            def detect_format(buf: bytes) -> str | None:
+                # WAV: RIFF....WAVE
+                if len(buf) >= 12 and buf.startswith(b"RIFF") and buf[8:12] == b"WAVE":
+                    return "wav"
+                # OGG/Opus: OggS
+                if buf.startswith(b"OggS"):
+                    return "ogg"
+                # MP3: ID3 tag or MPEG frame sync
+                if buf.startswith(b"ID3") or (len(buf) >= 2 and buf[0] == 0xFF and (buf[1] & 0xE0) == 0xE0):
+                    return "mp3"
+                # WebM/Matroska EBML header
+                if buf.startswith(b"\x1A\x45\xDF\xA3"):
+                    return "webm"
+                # MP4/M4A: ftyp at offset 4
+                if len(buf) >= 12 and buf[4:8] == b"ftyp":
+                    return "mp4"
+                return None
+
+            detected = detect_format(audio_bytes)
+            logger.info(f"Detected audio format: {detected or 'unknown'}")
+
+            # If unknown, try to transcode to WAV as a safe fallback
+            if not detected:
+                if _PYDUB_AVAILABLE:
+                    try:
+                        with io.BytesIO(audio_bytes) as inp:
+                            segment = AudioSegment.from_file(inp)
+                        out_io = io.BytesIO()
+                        segment.export(out_io, format="wav")
+                        audio_bytes = out_io.getvalue()
+                        detected = "wav"
+                        logger.info("Transcoded unknown input to WAV for STT")
+                    except Exception as transcode_err:
+                        logger.warning(f"Transcode to WAV failed, sending as-is: {transcode_err}")
+                # If pydub unavailable, proceed as-is; OpenAI may still accept based on sniffing
+
+            # Map detected container to an appropriate filename extension
+            ext_map = {
+                "wav": "wav",
+                "webm": "webm",
+                "ogg": "ogg",
+                "mp3": "mp3",
+                "mp4": "mp4",
+            }
+            ext = ext_map.get(detected or "", "webm")
+
             audio_file = io.BytesIO(audio_bytes)
-            # Check if audio was processed (WAV) or is original (WebM)
-            # We can detect this by checking if the audio starts with WAV header
-            if audio_bytes.startswith(b'RIFF'):
-                audio_file.name = "audio.wav"  # Processed WAV format
-            else:
-                audio_file.name = "audio.webm"  # Original WebM format (fallback)
-            
+            audio_file.name = f"audio.{ext}"
+
             response = await self.client.audio.transcriptions.create(
                 model=self.stt_model,
                 file=audio_file,
-                response_format="text"
+                response_format="text",
             )
             return response.strip()
-            
+
         except Exception as e:
             logger.error(f"Error in speech-to-text: {e}")
             raise ValueError(f"Speech-to-text failed: {e}")

@@ -41,6 +41,7 @@ export type VoiceProcessingState = 'idle' | 'recording' | 'processing' | 'playin
 export class V2VService {
   private websocket: WebSocket | null = null;
   private mediaRecorder: MediaRecorder | null = null;
+  private chosenMimeType: string | null = null;
   private audioChunks: Blob[] = [];
   private currentAudio: HTMLAudioElement | null = null;
 
@@ -298,8 +299,20 @@ export class V2VService {
         } 
       });
 
+      // Select a supported mime type in order of preference
+      const candidates = [
+        'audio/webm;codecs=opus',
+        'audio/ogg;codecs=opus',
+        'audio/webm',
+        'audio/ogg',
+        'audio/mp4',
+        'audio/mpeg'
+      ];
+      const supported = candidates.find((c) => MediaRecorder.isTypeSupported(c));
+      this.chosenMimeType = supported || '';
+
       this.mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
+        mimeType: this.chosenMimeType || undefined
       });
 
       this.audioChunks = [];
@@ -354,7 +367,7 @@ export class V2VService {
 
     try {
       const audioBlob = new Blob(this.audioChunks, { 
-        type: 'audio/webm' 
+        type: this.chosenMimeType || 'audio/webm' 
       });
       
       console.log('Audio blob size:', audioBlob.size, 'bytes');
