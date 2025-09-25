@@ -130,11 +130,15 @@ class V2VWebSocketService:
             
             logger.info(f"Processing voice input for user {user_id}, audio data length: {len(audio_data) if audio_data else 0}")
             
-            # Process audio through audio processor to convert format
-            processed_audio = await self.audio_processor.prepare_audio_for_openai(audio_data)
-            
-            # Process audio and convert to text using OpenAIClient
-            transcript = await self.openai_client.speech_to_text(processed_audio)
+            # Try to process audio through audio processor, fallback to direct processing
+            try:
+                processed_audio = await self.audio_processor.prepare_audio_for_openai(audio_data)
+                # Process audio and convert to text using OpenAIClient
+                transcript = await self.openai_client.speech_to_text(processed_audio)
+            except Exception as audio_processing_error:
+                logger.warning(f"Audio processing failed, using direct approach: {audio_processing_error}")
+                # Fallback: send audio directly to OpenAI (it can handle WebM)
+                transcript = await self.openai_client.speech_to_text(audio_data)
             
             # Generate AI response using Groq LLM with OpenAI fallback
             try:

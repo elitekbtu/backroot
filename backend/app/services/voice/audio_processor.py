@@ -21,14 +21,21 @@ class AudioProcessor:
             # Decode base64 audio
             audio_bytes = base64.b64decode(audio_data)
             
-            # Try to load audio with pydub
+            # Try to load audio with pydub (requires FFmpeg)
             try:
                 with io.BytesIO(audio_bytes) as audio_io:
                     audio_segment = AudioSegment.from_wav(audio_io)
             except:
                 # Try other formats
-                with io.BytesIO(audio_bytes) as audio_io:
-                    audio_segment = AudioSegment.from_file(audio_io)
+                try:
+                    with io.BytesIO(audio_bytes) as audio_io:
+                        audio_segment = AudioSegment.from_file(audio_io)
+                except Exception as ffmpeg_error:
+                    logger.warning(f"FFmpeg processing failed: {ffmpeg_error}")
+                    # Fallback: return original audio data if FFmpeg is not available
+                    # OpenAI Whisper can handle many formats directly
+                    logger.info("Using fallback: returning original audio data")
+                    return audio_data
             
             # Convert to mono if stereo
             if audio_segment.channels > 1:
@@ -54,7 +61,9 @@ class AudioProcessor:
             
         except Exception as e:
             logger.error(f"Error preparing audio for OpenAI: {e}")
-            raise ValueError(f"Unsupported audio format: {e}")
+            # Fallback: return original audio data
+            logger.info("Using fallback: returning original audio data due to processing error")
+            return audio_data
     
     async def validate_audio_format(self, audio_data: str) -> bool:
         """Validate audio format and size."""

@@ -77,7 +77,12 @@ class OpenAIClient:
             
             # Create a proper file-like object for OpenAI
             audio_file = io.BytesIO(audio_bytes)
-            audio_file.name = "audio.wav"  # Audio is now processed to WAV format
+            # Check if audio was processed (WAV) or is original (WebM)
+            # We can detect this by checking if the audio starts with WAV header
+            if audio_bytes.startswith(b'RIFF'):
+                audio_file.name = "audio.wav"  # Processed WAV format
+            else:
+                audio_file.name = "audio.webm"  # Original WebM format (fallback)
             
             response = await self.client.audio.transcriptions.create(
                 model=self.stt_model,
